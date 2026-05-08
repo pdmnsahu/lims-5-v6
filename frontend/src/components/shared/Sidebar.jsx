@@ -24,7 +24,6 @@ const roleNav = {
     { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard'       },
     { to: '/samples',        icon: Layers,          label: 'Samples'         },
     { to: '/sample-approval',icon: CheckSquare,     label: 'Sample Approval' },
-    { to: '/review-tests',   icon: FileCheck,       label: 'Review Tests'    },
     { to: '/reports',        icon: FileCheck,       label: 'Reports'         },
     { to: '/ambient',        icon: Thermometer,     label: 'Ambient Log'     },
   ],

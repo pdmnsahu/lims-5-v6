@@ -9,7 +9,6 @@ import SampleGroupDetailPage from './pages/SampleGroupDetailPage';
 import SamplesPage from './pages/SamplesPage';
 import SampleApprovalPage from './pages/SampleApprovalPage';
 import MyTestsPage from './pages/MyTestsPage';
-import ReviewTestsPage from './pages/ReviewTestsPage';
 import ReportsPage from './pages/ReportsPage';
 import SuperAdminAllTestsPage from './pages/SuperAdminAllTestsPage';
 import AuditPage from './pages/AuditPage';
@@ -60,7 +59,6 @@ function AppRoutes() {
 
         {/* Lab Manager */}
         <Route path="sample-approval" element={<RoleRoute roles={['lab_manager','super_admin']}><SampleApprovalPage /></RoleRoute>} />
-        <Route path="review-tests"    element={<RoleRoute roles={['lab_manager']}><ReviewTestsPage /></RoleRoute>} />
         <Route path="ambient"         element={<RoleRoute roles={['lab_manager','super_admin']}><AmbientPage /></RoleRoute>} />
 
         {/* Chemist */}
