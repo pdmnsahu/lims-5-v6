@@ -5,7 +5,6 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
 import ClientsPage from './pages/ClientsPage';
-import SampleGroupsPage from './pages/SampleGroupsPage';
 import SampleGroupDetailPage from './pages/SampleGroupDetailPage';
 import SamplesPage from './pages/SamplesPage';
 import SampleApprovalPage from './pages/SampleApprovalPage';
@@ -50,11 +49,10 @@ function AppRoutes() {
         <Route path="all-tests" element={<RoleRoute roles={['super_admin']}><SuperAdminAllTestsPage /></RoleRoute>} />
         <Route path="audit"     element={<RoleRoute roles={['super_admin']}><AuditPage /></RoleRoute>} />
 
-        {/* Samples — super_admin, admin, lab_manager */}
+        {/* Samples — unified page for super_admin, admin, lab_manager */}
         <Route path="samples" element={<RoleRoute roles={['super_admin','admin','lab_manager']}><SamplesPage /></RoleRoute>} />
 
-        {/* Sample Groups — admin + lab_manager + super_admin */}
-        <Route path="sample-groups"     element={<RoleRoute roles={['admin','lab_manager']}><SampleGroupsPage /></RoleRoute>} />
+        {/* Sample Group Detail — still its own page, linked from Samples */}
         <Route path="sample-groups/:id" element={<RoleRoute roles={['admin','lab_manager','super_admin']}><SampleGroupDetailPage /></RoleRoute>} />
 
         {/* Reports — admin + lab_manager */}

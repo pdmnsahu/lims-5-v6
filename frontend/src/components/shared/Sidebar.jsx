@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Building2, FlaskConical,
-  ClipboardList, FileCheck, LogOut, ChevronRight,
+  FileCheck, LogOut, ChevronRight,
   Beaker, Shield, Layers, Thermometer, CheckSquare
 } from 'lucide-react';
 
@@ -16,14 +16,12 @@ const roleNav = {
     { to: '/audit',      icon: Shield,          label: 'Audit Trail'  },
   ],
   admin: [
-    { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard'    },
-    { to: '/sample-groups',icon: ClipboardList,   label: 'Sample Groups'},
-    { to: '/samples',      icon: Layers,          label: 'Samples'      },
-    { to: '/reports',      icon: FileCheck,       label: 'Reports'      },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/samples',   icon: Layers,          label: 'Samples'   },
+    { to: '/reports',   icon: FileCheck,       label: 'Reports'   },
   ],
   lab_manager: [
     { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard'       },
-    { to: '/sample-groups',  icon: ClipboardList,   label: 'Sample Groups'   },
     { to: '/samples',        icon: Layers,          label: 'Samples'         },
     { to: '/sample-approval',icon: CheckSquare,     label: 'Sample Approval' },
     { to: '/review-tests',   icon: FileCheck,       label: 'Review Tests'    },
@@ -50,7 +48,7 @@ export default function Sidebar() {
             <FlaskConical size={16} className="text-white" />
           </div>
           <div>
-            <p className="font-display font-bold text-gray-900 leading-none text-base">RELIMS</p>
+            <p className="font-display font-bold text-gray-900 leading-none text-base">CoalLIMS</p>
             <p className="text-[10px] text-gray-400 mt-0.5">Lab Management</p>
           </div>
         </div>
