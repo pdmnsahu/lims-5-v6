@@ -73,7 +73,58 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/tests/:id
+// ── IMPORTANT: all literal-path GET routes MUST come before GET /:id ─────────
+
+// GET /api/tests/sample-approval
+router.get('/sample-approval', authorize('lab_manager', 'super_admin'), async (req, res) => {
+  try {
+    const samples = await sql`
+      SELECT
+        s.id AS sample_id,
+        s.lab_internal_id,
+        s.sample_ref_id,
+        sg.group_ref_id,
+        c.name AS client_name,
+        MAX(CASE WHEN td.name = 'Total Moisture (TM)'   THEN st.result_value END) AS tm_value,
+        MAX(CASE WHEN td.name = 'Total Moisture (TM)'   THEN st.status       END) AS tm_status,
+        MAX(CASE WHEN td.name = 'Total Moisture (TM)'   THEN st.id           END) AS tm_test_id,
+        MAX(CASE WHEN td.name = 'Moisture (ADB)'        THEN st.result_value END) AS adb_moist_value,
+        MAX(CASE WHEN td.name = 'Moisture (ADB)'        THEN st.status       END) AS adb_moist_status,
+        MAX(CASE WHEN td.name = 'Moisture (ADB)'        THEN st.id           END) AS adb_moist_test_id,
+        MAX(CASE WHEN td.name = 'Ash (ADB)'             THEN st.result_value END) AS adb_ash_value,
+        MAX(CASE WHEN td.name = 'Ash (ADB)'             THEN st.status       END) AS adb_ash_status,
+        MAX(CASE WHEN td.name = 'Ash (ADB)'             THEN st.id           END) AS adb_ash_test_id,
+        MAX(CASE WHEN td.name = 'Gross Calorific Value' THEN st.result_value END) AS gcv_value,
+        MAX(CASE WHEN td.name = 'Gross Calorific Value' THEN st.status       END) AS gcv_status,
+        MAX(CASE WHEN td.name = 'Gross Calorific Value' THEN st.id           END) AS gcv_test_id,
+        MAX(CASE WHEN td.name = 'Volatile Matter (ADB)' THEN st.result_value END) AS adb_vm_value,
+        MAX(CASE WHEN td.name = 'Volatile Matter (ADB)' THEN st.status       END) AS adb_vm_status,
+        MAX(CASE WHEN td.name = 'Volatile Matter (ADB)' THEN st.id           END) AS adb_vm_test_id,
+        MAX(CASE WHEN td.name = 'Moisture (EQ)'         THEN st.result_value END) AS eq_moist_value,
+        MAX(CASE WHEN td.name = 'Moisture (EQ)'         THEN st.status       END) AS eq_moist_status,
+        MAX(CASE WHEN td.name = 'Moisture (EQ)'         THEN st.id           END) AS eq_moist_test_id,
+        BOOL_AND(st.status = 'approved') FILTER (WHERE st.id IS NOT NULL) AS all_approved,
+        COUNT(st.id)::int AS total_tests,
+        COUNT(CASE WHEN st.status = 'submitted' THEN 1 END)::int AS pending_review_count
+      FROM samples s
+      JOIN sample_groups sg ON sg.id = s.sample_group_id
+      JOIN clients c        ON c.id  = sg.client_id
+      LEFT JOIN sample_tests st     ON st.sample_id = s.id
+      LEFT JOIN test_definitions td ON td.id = st.test_definition_id
+      WHERE s.lab_internal_id IS NOT NULL
+      GROUP BY s.id, s.lab_internal_id, s.sample_ref_id, sg.group_ref_id, c.name
+      HAVING COUNT(CASE WHEN st.status = 'submitted' THEN 1 END) > 0
+          OR COUNT(CASE WHEN st.status = 'approved'  THEN 1 END) > 0
+      ORDER BY s.lab_internal_id ASC
+    `;
+    res.json(samples);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/tests/:id  ── must come after all literal-path GET routes
 router.get('/:id', async (req, res) => {
   try {
     const [test] = await sql`
@@ -100,20 +151,18 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/tests/:id/submit — chemist submits result (+ optional image_url for GCV)
+// PATCH /api/tests/:id/submit
 router.patch('/:id/submit', authorize('chemist'), async (req, res) => {
   try {
     const { result_value, result_notes, image_url } = req.body;
     if (result_value === undefined || result_value === '')
       return res.status(400).json({ error: 'result_value required' });
-
-    // Validate numeric value
     if (isNaN(Number(result_value)))
       return res.status(400).json({ error: 'result_value must be a number' });
 
     const [existing] = await sql`SELECT * FROM sample_tests WHERE id = ${req.params.id}`;
-    if (!existing)                                          return res.status(404).json({ error: 'Test not found' });
-    if (existing.assigned_chemist_id !== req.user.id)      return res.status(403).json({ error: 'Not your test' });
+    if (!existing)                                     return res.status(404).json({ error: 'Test not found' });
+    if (existing.assigned_chemist_id !== req.user.id)  return res.status(403).json({ error: 'Not your test' });
     if (existing.status === 'submitted' || existing.status === 'approved')
       return res.status(409).json({ error: 'Already submitted or approved — cannot change' });
 
@@ -140,7 +189,7 @@ router.patch('/:id/submit', authorize('chemist'), async (req, res) => {
   }
 });
 
-// PATCH /api/tests/:id/review — lab_manager approves or rejects
+// PATCH /api/tests/:id/review
 router.patch('/:id/review', authorize('lab_manager'), async (req, res) => {
   try {
     const { action, rejection_reason } = req.body;
@@ -150,8 +199,8 @@ router.patch('/:id/review', authorize('lab_manager'), async (req, res) => {
       return res.status(400).json({ error: 'rejection_reason required' });
 
     const [existing] = await sql`SELECT * FROM sample_tests WHERE id = ${req.params.id}`;
-    if (!existing)                        return res.status(404).json({ error: 'Test not found' });
-    if (existing.status !== 'submitted')  return res.status(409).json({ error: 'Test must be submitted first' });
+    if (!existing)                       return res.status(404).json({ error: 'Test not found' });
+    if (existing.status !== 'submitted') return res.status(409).json({ error: 'Test must be submitted first' });
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
@@ -170,14 +219,12 @@ router.patch('/:id/review', authorize('lab_manager'), async (req, res) => {
       detail: { result_value: existing.result_value, rejection_reason: rejection_reason ?? null },
       ip: getIP(req) });
 
-    // Auto-complete group when all tests approved
     if (newStatus === 'approved') {
       const [grp] = await sql`
         SELECT sg.id FROM sample_groups sg
         JOIN samples s      ON s.sample_group_id = sg.id
         JOIN sample_tests st ON st.sample_id     = s.id
-        WHERE st.id = ${req.params.id}
-        LIMIT 1
+        WHERE st.id = ${req.params.id} LIMIT 1
       `;
       if (grp) {
         const [{ pending }] = await sql`
@@ -198,10 +245,8 @@ router.patch('/:id/review', authorize('lab_manager'), async (req, res) => {
   }
 });
 
-export default router;
-
-// PATCH /api/tests/:id/reassign — lab_manager reassigns chemist (pending only)
-router.patch('/:id/reassign', authorize('super_admin'), async (req, res) => {
+// PATCH /api/tests/:id/reassign
+router.patch('/:id/reassign', authorize('lab_manager', 'super_admin'), async (req, res) => {
   try {
     const { assigned_chemist_id } = req.body;
     if (!assigned_chemist_id) return res.status(400).json({ error: 'assigned_chemist_id required' });
@@ -209,7 +254,7 @@ router.patch('/:id/reassign', authorize('super_admin'), async (req, res) => {
     const [existing] = await sql`SELECT * FROM sample_tests WHERE id = ${req.params.id}`;
     if (!existing) return res.status(404).json({ error: 'Test not found' });
     if (existing.status !== 'pending')
-      return res.status(409).json({ error: 'Can only reassign pending tests — this test has already been submitted' });
+      return res.status(409).json({ error: 'Can only reassign pending tests' });
 
     const [oldChemist] = await sql`SELECT name FROM users WHERE id = ${existing.assigned_chemist_id}`;
     const [newChemist] = await sql`SELECT name, role FROM users WHERE id = ${assigned_chemist_id}`;
@@ -218,8 +263,7 @@ router.patch('/:id/reassign', authorize('super_admin'), async (req, res) => {
 
     const [test] = await sql`
       UPDATE sample_tests SET assigned_chemist_id = ${assigned_chemist_id}
-      WHERE id = ${req.params.id}
-      RETURNING *
+      WHERE id = ${req.params.id} RETURNING *
     `;
 
     await logAction({ user: req.user, action: 'REASSIGN_TEST', entityType: 'sample_test',
@@ -233,8 +277,8 @@ router.patch('/:id/reassign', authorize('super_admin'), async (req, res) => {
   }
 });
 
-// DELETE /api/tests/:id — lab_manager deletes unwanted pending test
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
+// DELETE /api/tests/:id
+router.delete('/:id', authorize('lab_manager', 'super_admin'), async (req, res) => {
   try {
     const [existing] = await sql`
       SELECT st.*, td.name AS test_name FROM sample_tests st
@@ -243,7 +287,7 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
     `;
     if (!existing) return res.status(404).json({ error: 'Test not found' });
     if (existing.status !== 'pending')
-      return res.status(409).json({ error: 'Can only delete pending tests — this test has already been submitted' });
+      return res.status(409).json({ error: 'Can only delete pending tests' });
 
     await sql`DELETE FROM sample_tests WHERE id = ${req.params.id}`;
 
@@ -258,7 +302,7 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
   }
 });
 
-// PATCH /api/tests/:id/revoke-approval — lab_manager/super_admin revokes an approved result
+// PATCH /api/tests/:id/revoke-approval — super_admin only
 router.patch('/:id/revoke-approval', authorize('super_admin'), async (req, res) => {
   try {
     const { reason } = req.body;
@@ -278,7 +322,6 @@ router.patch('/:id/revoke-approval', authorize('super_admin'), async (req, res) 
       RETURNING *
     `;
 
-    // If group was completed, revert it to in_progress
     const [grp] = await sql`
       SELECT sg.id FROM sample_groups sg
       JOIN samples s      ON s.sample_group_id = sg.id
@@ -286,7 +329,10 @@ router.patch('/:id/revoke-approval', authorize('super_admin'), async (req, res) 
       WHERE st.id = ${req.params.id} LIMIT 1
     `;
     if (grp) {
-      await sql`UPDATE sample_groups SET status = 'in_progress' WHERE id = ${grp.id} AND status = 'completed'`;
+      await sql`
+        UPDATE sample_groups SET status = 'tests_ongoing'
+        WHERE id = ${grp.id} AND status = 'completed'
+      `;
     }
 
     await logAction({ user: req.user, action: 'REVOKE_APPROVAL', entityType: 'sample_test',
@@ -300,54 +346,4 @@ router.patch('/:id/revoke-approval', authorize('super_admin'), async (req, res) 
   }
 });
 
-// GET /api/tests/sample-approval — lab manager view: all samples with their test results in columns
-// Returns one row per sample with each test result as a named field
-router.get('/sample-approval', authorize('lab_manager', 'super_admin'), async (req, res) => {
-  try {
-    const samples = await sql`
-      SELECT
-        s.id AS sample_id,
-        s.lab_internal_id,
-        s.sample_ref_id,
-        sg.group_ref_id,
-        c.name AS client_name,
-        -- Each test as a separate column using conditional aggregation
-        MAX(CASE WHEN td.name = 'Total Moisture (TM)'   THEN st.result_value END) AS tm_value,
-        MAX(CASE WHEN td.name = 'Total Moisture (TM)'   THEN st.status       END) AS tm_status,
-        MAX(CASE WHEN td.name = 'Total Moisture (TM)'   THEN st.id           END) AS tm_test_id,
-        MAX(CASE WHEN td.name = 'Moisture (ADB)'        THEN st.result_value END) AS adb_moist_value,
-        MAX(CASE WHEN td.name = 'Moisture (ADB)'        THEN st.status       END) AS adb_moist_status,
-        MAX(CASE WHEN td.name = 'Moisture (ADB)'        THEN st.id           END) AS adb_moist_test_id,
-        MAX(CASE WHEN td.name = 'Ash (ADB)'             THEN st.result_value END) AS adb_ash_value,
-        MAX(CASE WHEN td.name = 'Ash (ADB)'             THEN st.status       END) AS adb_ash_status,
-        MAX(CASE WHEN td.name = 'Ash (ADB)'             THEN st.id           END) AS adb_ash_test_id,
-        MAX(CASE WHEN td.name = 'Gross Calorific Value' THEN st.result_value END) AS gcv_value,
-        MAX(CASE WHEN td.name = 'Gross Calorific Value' THEN st.status       END) AS gcv_status,
-        MAX(CASE WHEN td.name = 'Gross Calorific Value' THEN st.id           END) AS gcv_test_id,
-        MAX(CASE WHEN td.name = 'Volatile Matter (ADB)' THEN st.result_value END) AS adb_vm_value,
-        MAX(CASE WHEN td.name = 'Volatile Matter (ADB)' THEN st.status       END) AS adb_vm_status,
-        MAX(CASE WHEN td.name = 'Volatile Matter (ADB)' THEN st.id           END) AS adb_vm_test_id,
-        MAX(CASE WHEN td.name = 'Moisture (EQ)'         THEN st.result_value END) AS eq_moist_value,
-        MAX(CASE WHEN td.name = 'Moisture (EQ)'         THEN st.status       END) AS eq_moist_status,
-        MAX(CASE WHEN td.name = 'Moisture (EQ)'         THEN st.id           END) AS eq_moist_test_id,
-        -- Overall sample approval status
-        BOOL_AND(st.status = 'approved') FILTER (WHERE st.id IS NOT NULL) AS all_approved,
-        COUNT(st.id)::int AS total_tests,
-        COUNT(CASE WHEN st.status = 'submitted' THEN 1 END)::int AS pending_review_count
-      FROM samples s
-      JOIN sample_groups sg ON sg.id = s.sample_group_id
-      JOIN clients c        ON c.id  = sg.client_id
-      LEFT JOIN sample_tests st    ON st.sample_id = s.id
-      LEFT JOIN test_definitions td ON td.id = st.test_definition_id
-      WHERE s.lab_internal_id IS NOT NULL
-      GROUP BY s.id, s.lab_internal_id, s.sample_ref_id, sg.group_ref_id, c.name
-      HAVING COUNT(CASE WHEN st.status = 'submitted' THEN 1 END) > 0
-          OR COUNT(CASE WHEN st.status = 'approved'  THEN 1 END) > 0
-      ORDER BY s.lab_internal_id ASC
-    `;
-    res.json(samples);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+export default router;
