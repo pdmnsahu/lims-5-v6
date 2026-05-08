@@ -25,8 +25,8 @@ router.get('/', async (req, res) => {
     } else if (req.user.role === 'lab_manager') {
       tests = await sql`
         SELECT st.*, td.name AS test_name, td.unit AS test_unit,
-               s.sample_ref_id, s.lab_internal_id, sg.group_ref_id,
-               c.name AS client_name, u.name AS chemist_name
+               s.id AS sample_db_id, s.sample_ref_id, s.lab_internal_id,
+               sg.group_ref_id, c.name AS client_name, u.name AS chemist_name
         FROM sample_tests st
         JOIN test_definitions td ON td.id = st.test_definition_id
         JOIN samples s           ON s.id  = st.sample_id
