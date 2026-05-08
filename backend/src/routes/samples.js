@@ -12,50 +12,108 @@ router.use(authenticate);
 // completed    : all assigned tests approved (and at least one exists)
 
 // GET /api/samples — list all with filters
-// Query: from, to (date), sort (lab_id|date), group_id, status
+// Query: from, to (date), group_id, status
 router.get('/', async (req, res) => {
   try {
     const { from, to, group_id, status } = req.query;
 
-    const samples = await sql`
-      SELECT
-        s.*,
-        sg.group_ref_id,
-        sg.id AS sample_group_id,
-        c.name AS client_name,
-        COUNT(st.id)::int AS test_count,
-        COUNT(CASE WHEN st.status = 'approved' THEN 1 END)::int AS approved_count,
-        CASE
-          WHEN s.lab_internal_id IS NULL THEN 'on_the_way'
-          WHEN COUNT(st.id) = 0 THEN 'tests_ongoing'
-          WHEN COUNT(st.id) > 0 AND COUNT(st.id) = COUNT(CASE WHEN st.status = 'approved' THEN 1 END) THEN 'completed'
-          ELSE 'tests_ongoing'
-        END AS sample_status
-      FROM samples s
-      JOIN sample_groups sg ON sg.id = s.sample_group_id
-      JOIN clients c        ON c.id  = sg.client_id
-      LEFT JOIN sample_tests st ON st.sample_id = s.id
-      WHERE
-        (${from ?? null}::date IS NULL OR s.created_at::date >= ${from ?? null}::date)
-        AND (${to ?? null}::date IS NULL OR s.created_at::date <= ${to ?? null}::date)
-        AND (${group_id ?? null}::uuid IS NULL OR s.sample_group_id = ${group_id ?? null}::uuid)
-      GROUP BY s.id, sg.group_ref_id, sg.id, c.name
-      HAVING (
-        ${status ?? null} IS NULL
-        OR (
+    // Build WHERE conditions in JS so null parameters never hit PostgreSQL
+    // Each condition is a raw sql fragment appended only when the filter is present
+    let samples;
+
+    // Base query without any filters — no dynamic params, always works
+    if (!from && !to && !group_id && !status) {
+      samples = await sql`
+        SELECT
+          s.*,
+          sg.group_ref_id, sg.id AS sample_group_id, c.name AS client_name,
+          COUNT(st.id)::int AS test_count,
+          COUNT(CASE WHEN st.status = 'approved' THEN 1 END)::int AS approved_count,
           CASE
             WHEN s.lab_internal_id IS NULL THEN 'on_the_way'
             WHEN COUNT(st.id) = 0 THEN 'tests_ongoing'
             WHEN COUNT(st.id) > 0 AND COUNT(st.id) = COUNT(CASE WHEN st.status = 'approved' THEN 1 END) THEN 'completed'
             ELSE 'tests_ongoing'
-          END
-        ) = ${status ?? null}
-      )
-      ORDER BY
-        CASE WHEN s.lab_internal_id IS NOT NULL THEN 0 ELSE 1 END,
-        s.lab_internal_id ASC NULLS LAST,
-        s.created_at ASC
-    `;
+          END AS sample_status
+        FROM samples s
+        JOIN sample_groups sg ON sg.id = s.sample_group_id
+        JOIN clients c        ON c.id  = sg.client_id
+        LEFT JOIN sample_tests st ON st.sample_id = s.id
+        GROUP BY s.id, sg.group_ref_id, sg.id, c.name
+        ORDER BY
+          CASE WHEN s.lab_internal_id IS NOT NULL THEN 0 ELSE 1 END,
+          s.lab_internal_id ASC NULLS LAST,
+          s.created_at ASC
+      `;
+    } else {
+      // Use Neon's raw query API to build dynamic WHERE safely
+      const { neon } = await import('@neondatabase/serverless');
+      const rawSql = neon(process.env.DATABASE_URL);
+
+      const conditions = [];
+      const values = [];
+
+      if (from) {
+        values.push(from);
+        conditions.push(`s.created_at::date >= $${values.length}::date`);
+      }
+      if (to) {
+        values.push(to);
+        conditions.push(`s.created_at::date <= $${values.length}::date`);
+      }
+      if (group_id) {
+        values.push(group_id);
+        conditions.push(`s.sample_group_id = $${values.length}::uuid`);
+      }
+
+      const whereClause = conditions.length
+        ? `WHERE ${conditions.join(' AND ')}`
+        : '';
+
+      // Status filter goes in HAVING because it depends on aggregation
+      let havingClause = '';
+      if (status) {
+        values.push(status);
+        havingClause = `
+          HAVING (
+            CASE
+              WHEN s.lab_internal_id IS NULL THEN 'on_the_way'
+              WHEN COUNT(st.id) = 0 THEN 'tests_ongoing'
+              WHEN COUNT(st.id) > 0 AND COUNT(st.id) = COUNT(CASE WHEN st.status = 'approved' THEN 1 END) THEN 'completed'
+              ELSE 'tests_ongoing'
+            END
+          ) = $${values.length}
+        `;
+      }
+
+      const query = `
+        SELECT
+          s.*,
+          sg.group_ref_id, sg.id AS sample_group_id, c.name AS client_name,
+          COUNT(st.id)::int AS test_count,
+          COUNT(CASE WHEN st.status = 'approved' THEN 1 END)::int AS approved_count,
+          CASE
+            WHEN s.lab_internal_id IS NULL THEN 'on_the_way'
+            WHEN COUNT(st.id) = 0 THEN 'tests_ongoing'
+            WHEN COUNT(st.id) > 0 AND COUNT(st.id) = COUNT(CASE WHEN st.status = 'approved' THEN 1 END) THEN 'completed'
+            ELSE 'tests_ongoing'
+          END AS sample_status
+        FROM samples s
+        JOIN sample_groups sg ON sg.id = s.sample_group_id
+        JOIN clients c        ON c.id  = sg.client_id
+        LEFT JOIN sample_tests st ON st.sample_id = s.id
+        ${whereClause}
+        GROUP BY s.id, sg.group_ref_id, sg.id, c.name
+        ${havingClause}
+        ORDER BY
+          CASE WHEN s.lab_internal_id IS NOT NULL THEN 0 ELSE 1 END,
+          s.lab_internal_id ASC NULLS LAST,
+          s.created_at ASC
+      `;
+
+      samples = await rawSql(query, values);
+    }
+
     res.json(samples);
   } catch (err) {
     console.error(err);
