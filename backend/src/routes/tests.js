@@ -33,6 +33,7 @@ router.get('/', async (req, res) => {
         JOIN sample_groups sg    ON sg.id = s.sample_group_id
         JOIN clients c           ON c.id  = sg.client_id
         LEFT JOIN users u        ON u.id  = st.assigned_chemist_id
+        WHERE st.status = 'approved'
         ORDER BY st.created_at DESC
       `;
     } else if (req.user.role === 'admin') {
