@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../lib/api';
+import { api } from '../lib/api';
 import { Badge, Modal, Field, Alert, Empty, Confirm, PageSpinner } from '../shared/UI';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Layers, List, Plus, Trash2, ChevronRight,
   Filter, X, ScanLine, ClipboardList
