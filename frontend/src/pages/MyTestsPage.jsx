@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { api } from '../../lib/api';
-import { Badge, Modal, Field, Alert, Empty, Table } from '../shared/UI';
+import { api } from '../lib/api';
+import { Badge, Modal, Field, Alert, Empty, Table } from '../components/shared/UI';
 import { Beaker, Send, Upload, X, ImagePlus, Loader2 } from 'lucide-react';
 
 // The 3 fixed test names — GCV requires an image upload

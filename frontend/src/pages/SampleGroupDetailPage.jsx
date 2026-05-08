@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../../lib/api';
-import { Badge, Modal, Field, Alert, PageSpinner, Confirm } from '../shared/UI';
-import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../lib/api';
+import { Badge, Modal, Field, Alert, PageSpinner, Confirm } from '../components/shared/UI';
+import { useAuth } from '../contexts/AuthContext';
 import { FlaskConical, Hash, Layers, Check, Minus, Pencil, Trash2, RefreshCw, Settings } from 'lucide-react';
 
 export default function SampleGroupDetailPage() {

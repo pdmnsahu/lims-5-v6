@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Field, Alert } from '../shared/UI';
+import { api } from '../lib/api';
+import { Field, Alert } from '../components/shared/UI';
 import { Thermometer, Droplets, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 
 function fmtDate(d) {

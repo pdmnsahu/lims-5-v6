@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../lib/api';
-import { Badge, Empty, PageSpinner, Confirm } from '../shared/UI';
-import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../lib/api';
+import { Badge, Empty, PageSpinner, Confirm } from '../components/shared/UI';
+import { useAuth } from '../contexts/AuthContext';
 import { Layers, List, Trash2, ChevronRight, Filter, X } from 'lucide-react';
 
 // Sample status badge — 3 states

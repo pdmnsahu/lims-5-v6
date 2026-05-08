@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { Alert } from '../shared/UI';
+import { useAuth } from '../contexts/AuthContext';
+import { Alert } from '../components/shared/UI';
 import { FlaskConical, User, Lock, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {

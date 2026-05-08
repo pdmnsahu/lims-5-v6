@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Table, Modal, Field, Alert, Confirm, Empty } from '../shared/UI';
+import { api } from '../lib/api';
+import { Table, Modal, Field, Alert, Confirm, Empty } from '../components/shared/UI';
 import { Building2, Plus, Pencil, Trash2 } from 'lucide-react';
 
 const blank = { name: '', contact_person: '', email: '', phone: '', address: '' };

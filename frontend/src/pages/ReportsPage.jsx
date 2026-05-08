@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { downloadSampleReport, downloadGroupReport } from '../../lib/pdf';
-import { Badge, Empty, Table, PageSpinner } from '../shared/UI';
+import { api } from '../lib/api';
+import { downloadSampleReport, downloadGroupReport } from '../lib/pdf';
+import { Badge, Empty, Table, PageSpinner } from '../components/shared/UI';
 import { FileDown, FileText, Loader2 } from 'lucide-react';
 
 // Group tests by sample_db_id so we can show per-sample download

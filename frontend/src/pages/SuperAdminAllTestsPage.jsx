@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Badge, Empty, PageSpinner, Modal, Field, Alert } from '../shared/UI';
+import { api } from '../lib/api';
+import { Badge, Empty, PageSpinner, Modal, Field, Alert } from '../components/shared/UI';
 import { FlaskConical, RotateCcw } from 'lucide-react';
 
 export default function SuperAdminAllTestsPage() {

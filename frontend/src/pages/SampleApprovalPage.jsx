@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Modal, Field, Alert, PageSpinner, Empty } from '../shared/UI';
+import { api } from '../lib/api';
+import { Modal, Field, Alert, PageSpinner, Empty } from '../components/shared/UI';
 import { CheckCircle, XCircle, FlaskConical } from 'lucide-react';
 
 // Status dot for each cell

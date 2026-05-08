@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Table, Modal, Field, Alert, Confirm, Empty } from '../shared/UI';
+import { api } from '../lib/api';
+import { Table, Modal, Field, Alert, Confirm, Empty } from '../components/shared/UI';
 import { FlaskConical, Plus, Pencil, Trash2, ToggleRight, ToggleLeft } from 'lucide-react';
 
 const blank = { name: '', unit: '', description: '' };

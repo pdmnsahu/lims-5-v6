@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Table, Badge, Modal, Field, Alert, Confirm, Empty } from '../shared/UI';
+import { api } from '../lib/api';
+import { Table, Badge, Modal, Field, Alert, Confirm, Empty } from '../components/shared/UI';
 import { UserPlus, Trash2, ToggleLeft, ToggleRight, KeyRound, Copy, Check, Pencil } from 'lucide-react';
 
 const ROLES = ['admin', 'lab_manager', 'chemist'];

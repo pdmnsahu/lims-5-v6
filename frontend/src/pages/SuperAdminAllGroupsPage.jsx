@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../lib/api';
-import { Table, Badge, Empty, PageSpinner } from '../shared/UI';
+import { api } from '../lib/api';
+import { Table, Badge, Empty, PageSpinner } from '../components/shared/UI';
 import { ClipboardList, ChevronRight } from 'lucide-react';
 
 export default function SuperAdminAllGroupsPage() {

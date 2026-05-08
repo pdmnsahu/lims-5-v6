@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../lib/api';
-import { PageSpinner, Badge } from '../shared/UI';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
+import { PageSpinner, Badge } from '../components/shared/UI';
 import { ClipboardList, Users, Building2, FlaskConical, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

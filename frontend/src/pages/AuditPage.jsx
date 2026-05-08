@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api } from '../../lib/api';
-import { Badge, Empty, PageSpinner } from '../shared/UI';
+import { api } from '../lib/api';
+import { Badge, Empty, PageSpinner } from '../components/shared/UI';
 import { Shield, Search, Download, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Human-readable labels and colours for each action

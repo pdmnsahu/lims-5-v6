@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Badge, Modal, Field, Alert, Empty, Table } from '../shared/UI';
+import { api } from '../lib/api';
+import { Badge, Modal, Field, Alert, Empty, Table } from '../components/shared/UI';
 import { CheckCircle, XCircle, FlaskConical } from 'lucide-react';
 
 export default function ReviewTestsPage() {
