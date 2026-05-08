@@ -48,6 +48,16 @@ router.get('/:id', async (req, res) => {
             'test_name', td.name, 'status', st.status, 'chemist_name', uch.name,
             'chemist_id', st.assigned_chemist_id
           )
+          ORDER BY
+            CASE td.name
+              WHEN 'Total Moisture (TM)'   THEN 1
+              WHEN 'Moisture (ADB)'        THEN 2
+              WHEN 'Ash (ADB)'             THEN 3
+              WHEN 'Gross Calorific Value' THEN 4
+              WHEN 'Volatile Matter (ADB)' THEN 5
+              WHEN 'Moisture (EQ)'         THEN 6
+              ELSE 7
+            END
         ) FILTER (WHERE st.id IS NOT NULL), '[]') AS assigned_tests
       FROM samples s
       LEFT JOIN sample_tests st     ON st.sample_id = s.id
