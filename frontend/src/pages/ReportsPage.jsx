@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
-import { downloadSampleReport, downloadGroupReport } from '../lib/pdf';
-import { Badge, Empty, Table, PageSpinner } from '../components/shared/UI';
+import { api } from '../../lib/api';
+import { downloadSampleReport, downloadGroupReport } from '../../lib/pdf';
+import { Badge, Empty, Table, PageSpinner } from '../shared/UI';
 import { FileDown, FileText, Loader2 } from 'lucide-react';
 
 // Group tests by sample_db_id so we can show per-sample download
@@ -25,18 +25,30 @@ function groupBySample(tests) {
 }
 
 export default function ReportsPage() {
-  const [tests,     setTests]     = useState([]);
-  const [groups,    setGroups]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [dlLoading, setDlLoading] = useState({});
-  const [view,      setView]      = useState('samples');
+  const [tests,      setTests]      = useState([]);
+  const [groups,     setGroups]     = useState([]);
+  const [sampleMeta, setSampleMeta] = useState({});
+  const [loading,    setLoading]    = useState(true);
+  const [dlLoading,  setDlLoading]  = useState({});
+  const [view,       setView]       = useState('samples');
 
   useEffect(() => {
-    Promise.all([api.getTests(), api.getSampleGroups()]).then(([t, g]) => {
-      setTests(t);
-      setGroups(g);
-      setLoading(false);
-    });
+    Promise.all([api.getTests(), api.getSampleGroups(), api.getSamples()])
+      .then(([t, g, s]) => {
+        setTests(t);
+        setGroups(g);
+        // Build a map of sample_id → { test_count, approved_count } for the guard
+        const sampleMeta = {};
+        s.forEach(sample => {
+          sampleMeta[sample.id] = {
+            test_count:     sample.test_count,
+            approved_count: sample.approved_count,
+          };
+        });
+        setSampleMeta(sampleMeta);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const downloadSample = async (sampleId, label) => {
@@ -98,11 +110,24 @@ export default function ReportsPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <button onClick={() => downloadSample(s.sample_db_id, s.lab_internal_id || s.sample_ref_id)}
-                    disabled={dlLoading[s.sample_db_id]} className="btn-primary py-1 px-3 text-xs">
-                    {dlLoading[s.sample_db_id] ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
-                    PDF Report
-                  </button>
+                  {(() => {
+                    const meta = sampleMeta[s.sample_db_id];
+                    const allApproved = meta && meta.test_count > 0 && meta.approved_count === meta.test_count;
+                    if (!allApproved) {
+                      return (
+                        <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg font-medium">
+                          {meta ? `${meta.approved_count}/${meta.test_count} approved` : 'Pending tests'}
+                        </span>
+                      );
+                    }
+                    return (
+                      <button onClick={() => downloadSample(s.sample_db_id, s.lab_internal_id || s.sample_ref_id)}
+                        disabled={dlLoading[s.sample_db_id]} className="btn-primary py-1 px-3 text-xs">
+                        {dlLoading[s.sample_db_id] ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
+                        PDF Report
+                      </button>
+                    );
+                  })()}
                 </td>
               </tr>
             ))}
