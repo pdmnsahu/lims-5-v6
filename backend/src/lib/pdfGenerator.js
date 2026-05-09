@@ -1,9 +1,3 @@
-// pdfGenerator.js
-// Fixes:
-//   1. Slow generation — browser warms up at server start, reused across requests
-//   2. Lagging PDF in Chrome — Parr image resized to max 800px wide before embedding
-//   3. Timeout — all images fetched server-side as base64, zero Puppeteer network requests
-
 import https from 'https';
 import http  from 'http';
 import { buildReportHTML } from './reportTemplate.js';
@@ -12,13 +6,19 @@ let browserInstance  = null;
 let browserLaunching = false;
 let launchQueue      = [];
 
-// ── Image fetch ────────────────────────────────────────────────────────────────
+// ── Cloudinary URL transformation ──────────────────────────────────────────────
+// Ask Cloudinary to serve a pre-resized, compressed version — less data to fetch
+function cloudinaryResize(url, width = 900, quality = 75) {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  return url.replace('/upload/', `/upload/w_${width},q_${quality},f_jpg/`);
+}
+
+// ── Fetch image bytes, follow one redirect ─────────────────────────────────────
 async function fetchBuffer(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
     const req = client.get(url, { timeout: 12000 }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        // Follow one redirect
         return fetchBuffer(res.headers.location).then(resolve).catch(reject);
       }
       const chunks = [];
@@ -27,36 +27,38 @@ async function fetchBuffer(url) {
       res.on('error', reject);
     });
     req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Image fetch timeout')); });
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
   });
 }
 
-// Convert URL to base64 data URI, with optional JPEG recompression for large images
-async function toDataURI(url, maxWidth = 0) {
+// ── Convert URL → base64 data URI ─────────────────────────────────────────────
+// isParr=true applies grayscale + PNG compression (calorimeter is always B&W text)
+async function toDataURI(url, isParr = false) {
   if (!url) return '';
   try {
-    let buf = await fetchBuffer(url);
+    // For Parr image: ask Cloudinary to pre-resize before we even download it
+    const fetchUrl = isParr ? cloudinaryResize(url, 900, 75) : url;
+    let buf = await fetchBuffer(fetchUrl);
 
-    // Resize large images using sharp (if installed) to keep PDF small and fast
-    // Parr image: maxWidth=800, logos: no resize needed
-    if (maxWidth > 0) {
+    if (isParr) {
       try {
         const sharp = (await import('sharp')).default;
-        const meta  = await sharp(buf).metadata();
-        if (meta.width > maxWidth) {
-          buf = await sharp(buf)
-            .resize(maxWidth, null, { withoutEnlargement: true })
-            .jpeg({ quality: 85, mozjpeg: true })
-            .toBuffer();
-        }
+        // Grayscale: calorimeter printout is B&W — eliminates colour data
+        // PNG: beats JPEG for text-on-white; Chrome renders it faster in PDFs
+        buf = await sharp(buf)
+          .resize(900, null, { withoutEnlargement: true })
+          .grayscale()
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+        return `data:image/png;base64,${buf.toString('base64')}`;
       } catch {
-        // sharp not installed — use original buffer
+        // sharp not installed — fall through to raw JPEG
       }
     }
 
-    const mime = url.match(/\.png(\?|$)/i) ? 'image/png'
-               : url.match(/\.gif(\?|$)/i) ? 'image/gif'
-               : url.match(/\.webp(\?|$)/i)? 'image/webp'
+    const mime = url.match(/\.png(\?|$)/i)  ? 'image/png'
+               : url.match(/\.gif(\?|$)/i)  ? 'image/gif'
+               : url.match(/\.webp(\?|$)/i) ? 'image/webp'
                : 'image/jpeg';
     return `data:${mime};base64,${buf.toString('base64')}`;
   } catch (err) {
@@ -65,33 +67,39 @@ async function toDataURI(url, maxWidth = 0) {
   }
 }
 
-// Fetch all report images in parallel
+// ── Fetch all report images in parallel ────────────────────────────────────────
 async function inlineImages({ tests, settings }) {
   const gcvTest = tests.find(t => t.test_name === 'Gross Calorific Value');
 
   const [logo, acc, stamp, sig, parr] = await Promise.all([
-    toDataURI(settings.logo_url          || ''),        // no resize — small logo
-    toDataURI(settings.accreditation_url || ''),        // no resize — small badge
-    toDataURI(settings.stamp_url         || ''),        // no resize — small stamp
-    toDataURI(settings.signature_url     || ''),        // no resize — small sig
-    toDataURI(gcvTest?.image_url         || '', 900),   // resize to max 900px — fixes lag
+    toDataURI(settings.logo_url          || '',  false),
+    toDataURI(settings.accreditation_url || '',  false),
+    toDataURI(settings.stamp_url         || '',  false),
+    toDataURI(settings.signature_url     || '',  false),
+    toDataURI(gcvTest?.image_url         || '',  true),  // ← grayscale + PNG
   ]);
 
   return {
-    inlinedSettings: { ...settings, logo_url: logo, accreditation_url: acc, stamp_url: stamp, signature_url: sig },
-    inlinedTests:    tests.map(t => t.test_name === 'Gross Calorific Value' ? { ...t, image_url: parr } : t),
+    inlinedSettings: {
+      ...settings,
+      logo_url:          logo,
+      accreditation_url: acc,
+      stamp_url:         stamp,
+      signature_url:     sig,
+    },
+    inlinedTests: tests.map(t =>
+      t.test_name === 'Gross Calorific Value' ? { ...t, image_url: parr } : t
+    ),
   };
 }
 
-// ── Browser singleton ──────────────────────────────────────────────────────────
+// ── Browser singleton with warm-up ─────────────────────────────────────────────
 async function getBrowser() {
-  // Return existing healthy instance
   if (browserInstance) {
     try { await browserInstance.version(); return browserInstance; }
     catch { browserInstance = null; }
   }
 
-  // Queue concurrent launch requests
   if (browserLaunching) {
     return new Promise((resolve, reject) => launchQueue.push({ resolve, reject }));
   }
@@ -100,26 +108,22 @@ async function getBrowser() {
   try {
     let puppeteer;
     try {
-      // Production (Render): puppeteer-core + @sparticuz/chromium
-      const chromium   = await import('@sparticuz/chromium');
-      puppeteer        = (await import('puppeteer-core')).default;
-      const execPath   = await chromium.default.executablePath();
-      browserInstance  = await puppeteer.launch({
+      const chromium  = await import('@sparticuz/chromium');
+      puppeteer       = (await import('puppeteer-core')).default;
+      const execPath  = await chromium.default.executablePath();
+      browserInstance = await puppeteer.launch({
         args:            [...chromium.default.args, '--disable-web-security'],
         defaultViewport: chromium.default.defaultViewport,
         executablePath:  execPath,
         headless:        chromium.default.headless,
       });
     } catch {
-      // Local dev: full puppeteer
       puppeteer       = (await import('puppeteer')).default;
       browserInstance = await puppeteer.launch({
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       });
     }
-
-    // Drain queue
     launchQueue.forEach(({ resolve }) => resolve(browserInstance));
     return browserInstance;
   } catch (err) {
@@ -131,18 +135,16 @@ async function getBrowser() {
   }
 }
 
-// ── Warm up — call this at server start ───────────────────────────────────────
 export async function warmUpBrowser() {
   try {
     console.log('[pdf] Warming up Chromium...');
     await getBrowser();
     console.log('[pdf] Chromium ready');
   } catch (err) {
-    console.warn('[pdf] Chromium warm-up failed (PDF generation will be slower):', err.message);
+    console.warn('[pdf] Warm-up failed:', err.message);
   }
 }
 
-// ── Main export ────────────────────────────────────────────────────────────────
 export async function generateReportPDF({ sample, tests, settings }) {
   const { inlinedSettings, inlinedTests } = await inlineImages({ tests, settings });
   const html = buildReportHTML({ sample, tests: inlinedTests, settings: inlinedSettings });
@@ -152,13 +154,12 @@ export async function generateReportPDF({ sample, tests, settings }) {
   try {
     await page.setViewport({ width: 794, height: 1123 });
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    const pdf = await page.pdf({
+    return await page.pdf({
       format:            'A4',
       printBackground:   true,
       margin:            { top: 0, right: 0, bottom: 0, left: 0 },
       preferCSSPageSize: true,
     });
-    return pdf;
   } finally {
     await page.close();
   }
