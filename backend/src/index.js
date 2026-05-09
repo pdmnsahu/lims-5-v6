@@ -15,7 +15,6 @@ import uploadRoutes      from './routes/upload.js';
 import auditRoutes       from './routes/audit.js';
 import ambientRoutes     from './routes/ambient.js';
 import settingsRoutes    from './routes/settings.js';
-import { warmUpBrowser } from './lib/pdfGenerator.js';
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -46,6 +45,4 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 CoalLIMS API v3 → http://localhost:${PORT}`);
-  // Warm up Chromium in the background so the first PDF request is fast
-  warmUpBrowser();
 });
