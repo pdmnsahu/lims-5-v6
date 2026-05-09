@@ -8,7 +8,7 @@ const styles = {
     minHeight: '297mm',
     background: '#fff',
     margin: '0 auto',
-    padding: '5mm 7mm 6mm 7mm',
+    padding: '6mm 8mm 8mm 8mm',
     boxSizing: 'border-box',
     fontFamily: 'Times New Roman, serif',
     color: '#000',
@@ -185,7 +185,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
       >
         <div
           style={{
-            fontSize: 18,
+            fontSize: 24,
             fontWeight: 700,
           }}
         >
@@ -212,7 +212,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '82px 1fr 82px',
+            gridTemplateColumns: '74px 1fr 74px',
             alignItems: 'start',
             columnGap: 10,
             marginBottom: 4,
@@ -243,7 +243,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
           <div style={{ textAlign: 'center' }}>
             <div
               style={{
-                fontSize: 9.5,
+                fontSize: 10,
                 lineHeight: 1.2,
               }}
             >
@@ -252,7 +252,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
 
             <div
               style={{
-                fontSize: 26,
+                fontSize: 30,
                 fontWeight: 700,
                 lineHeight: 1,
                 marginTop: 4,
@@ -308,7 +308,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
               >
                 <div
                   style={{
-                    fontSize: 28,
+                    fontSize: 32,
                     fontWeight: 700,
                     lineHeight: 1,
                   }}
@@ -318,7 +318,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
 
                 <div
                   style={{
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: 700,
                     marginTop: 2,
                   }}
@@ -466,7 +466,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
           style={{
             textAlign: 'center',
             fontWeight: 700,
-            fontSize: 18,
+            fontSize: 22,
             marginTop: 4,
             marginBottom: 4,
           }}
@@ -567,8 +567,8 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
           style={{
             display: 'grid',
             gridTemplateColumns: '58% 42%',
-            columnGap: 8,
-            marginTop: 12,
+            columnGap: 14,
+            marginTop: 18,
             alignItems: 'start',
           }}
         >
@@ -606,8 +606,8 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
           >
             <div
               style={{
-                width: 120,
-                height: 120,
+                width: 140,
+                height: 140,
                 margin: '0 auto',
               }}
             >
@@ -655,7 +655,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
 
             <div
               style={{
-                fontSize: 16,
+                fontSize: 20,
                 fontWeight: 700,
                 marginTop: 8,
               }}
@@ -704,7 +704,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
         <div
           style={{
             marginTop: 8,
-            borderTop: '3px solid #000',
+            borderTop: '4px solid #000',
             paddingTop: 6,
           }}
         >
