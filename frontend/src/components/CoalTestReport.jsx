@@ -67,31 +67,28 @@ export default function CoalTestReport({ sample, tests, onClose }) {
     finally { setBusy(false); }
   };
 
-  // ── test values ───────────────────────────────────────────────────────────────
+  // ── test values ───────────────────────────────────────────────────────────
   const tTM  = byName(tests, 'Total Moisture (TM)');
   const tAM  = byName(tests, 'Moisture (ADB)');
   const tAA  = byName(tests, 'Ash (ADB)');
   const tGCV = byName(tests, 'Gross Calorific Value');
   const tEQM = byName(tests, 'Moisture (EQ)');
-  const tEQA = byName(tests, 'Ash (EQ)');
-  const tEQG = byName(tests, 'GCV (EQ)') || byName(tests, 'Gross Calorific Value (EQ)');
+  const tVM  = byName(tests, 'Volatile Matter (ADB)');
 
-  const eqGcv  = tEQG?.result_value ?? (tGCV?.result_value ? Math.round(parseFloat(tGCV.result_value) * 0.99) : null);
+  const eqGcv  = tGCV?.result_value ? Math.round(parseFloat(tGCV.result_value) * 0.99) : null;
   const grade  = deriveGrade(eqGcv);
   const recv   = dd(sample.group_created_at);
   const start  = dd(tTM?.submitted_at || tAM?.submitted_at || tGCV?.submitted_at);
   const end    = dd(tTM?.reviewed_at  || tAM?.reviewed_at  || tGCV?.reviewed_at);
-  const period = start && end ? `${start} to ${end}` : '—';
+  const period = start && end ? `${start} to\n${end}` : '—';
   const rptDate= end || dd(new Date());
   const auth   = tGCV?.assigned_by_name || tAM?.assigned_by_name || tTM?.assigned_by_name || '—';
   const parrImg= tGCV?.image_url || null;
   const rptNo  = sample.lab_internal_id || sample.sample_ref_id || '—';
   const today  = dd(new Date());
 
-  const b  = '1px solid #000';
-  const b2 = '1.5px solid #000';
-  const TH = (ex={}) => ({ padding:'2px 4px', fontSize:8.5, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b, ...ex });
-  const TD = (ex={}) => ({ padding:'3px 4px', fontSize:10.5, textAlign:'center', borderRight:b, ...ex });
+  const b   = '1px solid #000';
+  const b2  = '2px solid #000';
 
   const ImgUpload = ({ label, val, set, ref_ }) => (
     <div style={{ marginBottom:12 }}>
@@ -104,179 +101,196 @@ export default function CoalTestReport({ sample, tests, onClose }) {
     </div>
   );
 
-  // ── A4 page: hard 794×1123, flex column, all sections flexShrink:0 ──────────
+  // ── A4 page ───────────────────────────────────────────────────────────────
   const Page = () => (
     <div ref={reportRef} style={{
-      width:794, height:1123, overflow:'hidden',
-      background:'#fff', fontFamily:"'Times New Roman',Times,serif",
-      fontSize:10, color:'#000', boxSizing:'border-box',
-      padding:'11px 17px 8px 17px',
-      display:'flex', flexDirection:'column',
+      width: 794, height: 1123, overflow: 'hidden',
+      background: '#fff', fontFamily: "'Times New Roman', Times, serif",
+      fontSize: 10, color: '#000', boxSizing: 'border-box',
+      padding: '10px 16px 8px 16px',
+      display: 'flex', flexDirection: 'column',
     }}>
 
-      {/* HEADER */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3, flexShrink:0 }}>
-        <div style={{ width:98, height:56 }}>
-          {logoImg ? <img src={logoImg} alt="logo" style={{ maxWidth:98, maxHeight:56, objectFit:'contain' }} />
-                   : <div style={{ width:98, height:56, border:'1px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#ccc', textAlign:'center' }}>Logo</div>}
+      {/* ── HEADER ── */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2, flexShrink:0 }}>
+        {/* Logo */}
+        <div style={{ width:90, height:52, display:'flex', alignItems:'center' }}>
+          {logoImg
+            ? <img src={logoImg} alt="logo" style={{ maxWidth:90, maxHeight:52, objectFit:'contain' }} />
+            : <div style={{ width:90, height:52, border:'1px dashed #bbb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:7.5, color:'#bbb', textAlign:'center' }}>Logo</div>}
         </div>
+        {/* Lab name center */}
         <div style={{ textAlign:'center', flex:1 }}>
-          <div style={{ fontSize:18, fontWeight:'bold', letterSpacing:0.4 }}>Ravi Energie Laboratory</div>
+          <div style={{ fontSize:17, fontWeight:'bold', letterSpacing:0.5 }}>Ravi Energie Laboratory</div>
         </div>
-        <div style={{ width:98, height:56, display:'flex', justifyContent:'flex-end', alignItems:'center' }}>
-          {accImg ? <img src={accImg} alt="acc" style={{ maxWidth:98, maxHeight:56, objectFit:'contain' }} />
-                  : <div style={{ width:98, height:56, border:'1px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#ccc', textAlign:'center' }}>Accreditation</div>}
+        {/* Accreditation right */}
+        <div style={{ width:90, height:52, display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
+          {accImg
+            ? <img src={accImg} alt="acc" style={{ maxWidth:90, maxHeight:52, objectFit:'contain' }} />
+            : <div style={{ width:90, height:52, border:'1px dashed #bbb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:7.5, color:'#bbb', textAlign:'center' }}>Accreditation</div>}
         </div>
       </div>
 
-      {/* ADDRESS BAR */}
-      <div style={{ borderTop:'2px solid #000', borderBottom:'1px solid #000', padding:'1px 0', marginBottom:2, display:'flex', justifyContent:'space-between', fontSize:7.5, flexShrink:0 }}>
-        <span>Laboratory: Plot No14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.</span>
-        <span>Phone:+91 8320021741 | Email: lab@ravienergie.com | Website: www.ravienergie.com</span>
+      {/* ── ADDRESS BAR ── */}
+      <div style={{ borderTop:b2, borderBottom:b, padding:'1.5px 0', marginBottom:1.5, display:'flex', justifyContent:'space-between', fontSize:7, flexShrink:0 }}>
+        <span>Laboratory: Plot No-14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.</span>
+        <span>Phone:+91 8320021741 &nbsp;|&nbsp; Email: lab@ravienergie.com &nbsp;|&nbsp; Website: www.ravienergie.com</span>
       </div>
-      <div style={{ fontSize:7.5, textAlign:'right', marginBottom:3, color:'#333', flexShrink:0 }}>
+
+      {/* Format line */}
+      <div style={{ fontSize:7, textAlign:'right', marginBottom:3, color:'#444', flexShrink:0 }}>
         Format: QCI/F25/09/01/QCI-CIL &nbsp;&nbsp; Date: {today} &nbsp;&nbsp; Rev: 04
       </div>
 
-      {/* TITLE BOX */}
-      <table style={{ width:'100%', borderCollapse:'collapse', border:b2, flexShrink:0 }}>
+      {/* ── TITLE BOX ── */}
+      <table style={{ width:'100%', borderCollapse:'collapse', border:b2, marginBottom:0, flexShrink:0 }}>
         <tbody>
           <tr>
             <td colSpan={5} style={{ textAlign:'center', padding:'3px 0 1px', borderBottom:b }}>
-              <div style={{ fontSize:16, fontWeight:'bold', letterSpacing:1 }}>TEST REPORT</div>
-              <div style={{ fontSize:8.5 }}>{rptNo}</div>
+              <div style={{ fontSize:15, fontWeight:'bold', letterSpacing:1 }}>TEST REPORT</div>
+              <div style={{ fontSize:8 }}>{rptNo}</div>
             </td>
           </tr>
           <tr>
-            <td style={{ padding:'2px 6px', borderRight:b, borderBottom:b, fontWeight:'bold', fontSize:9.5 }}>Discipline</td>
-            <td style={{ padding:'2px 6px', borderRight:b, borderBottom:b, fontSize:9.5 }}>Chemical</td>
-            <td style={{ padding:'2px 6px', borderRight:b, borderBottom:b, fontWeight:'bold', fontSize:9.5 }}>Group</td>
-            <td colSpan={2} style={{ padding:'2px 6px', borderBottom:b, fontSize:9.5 }}>Solid Fuels</td>
+            <td style={{ padding:'2px 6px', borderRight:b, borderBottom:b, fontWeight:'bold', fontSize:9 }}>Discipline</td>
+            <td style={{ padding:'2px 6px', borderRight:b, borderBottom:b, fontSize:9 }}>Chemical</td>
+            <td style={{ padding:'2px 6px', borderRight:b, borderBottom:b, fontWeight:'bold', fontSize:9 }}>Group</td>
+            <td colSpan={2} style={{ padding:'2px 6px', borderBottom:b, fontSize:9 }}>Solid Fuels</td>
           </tr>
           <tr>
-            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:8, color:'#555' }}>Test Report No</td>
-            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:8, color:'#555' }}>Report date</td>
-            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:8, color:'#555' }}>Customer PO</td>
-            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:8, color:'#555' }}>Date</td>
-            <td style={{ padding:'1px 6px', borderBottom:b, fontSize:8, color:'#555' }}>Text Pages</td>
+            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:7.5, color:'#555' }}>Test Report No</td>
+            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:7.5, color:'#555' }}>Report date</td>
+            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:7.5, color:'#555' }}>Customer PO</td>
+            <td style={{ padding:'1px 6px', borderRight:b, borderBottom:b, fontSize:7.5, color:'#555' }}>Date</td>
+            <td style={{ padding:'1px 6px', borderBottom:b, fontSize:7.5, color:'#555' }}>Text Pages</td>
           </tr>
           <tr>
-            <td style={{ padding:'2px 6px', borderRight:b, fontWeight:'bold', fontSize:11 }}>{rptNo}</td>
-            <td style={{ padding:'2px 6px', borderRight:b, fontWeight:'bold', fontSize:11 }}>{rptDate}</td>
-            <td style={{ padding:'2px 6px', borderRight:b, fontSize:10 }}>{sample.group_ref_id || '—'}</td>
-            <td style={{ padding:'2px 6px', borderRight:b, fontSize:10 }}>{dd(sample.group_created_at)}</td>
-            <td style={{ padding:'2px 6px', fontSize:10 }}>1</td>
+            <td style={{ padding:'2px 6px', borderRight:b, fontWeight:'bold', fontSize:10 }}>{rptNo}</td>
+            <td style={{ padding:'2px 6px', borderRight:b, fontWeight:'bold', fontSize:10 }}>{rptDate}</td>
+            <td style={{ padding:'2px 6px', borderRight:b, fontSize:9.5 }}>{sample.group_ref_id || '—'}</td>
+            <td style={{ padding:'2px 6px', borderRight:b, fontSize:9.5 }}>{dd(sample.group_created_at)}</td>
+            <td style={{ padding:'2px 6px', fontSize:9.5 }}>1</td>
           </tr>
         </tbody>
       </table>
 
-      {/* CUSTOMER INFO */}
+      {/* ── CUSTOMER / DESCRIPTION ── */}
       <table style={{ width:'100%', borderCollapse:'collapse', border:b, borderTop:'none', flexShrink:0 }}>
         <tbody>
           <tr>
-            <td style={{ width:'50%', padding:'2px 6px', borderRight:b, borderBottom:b, fontSize:8, color:'#555' }}>Customer Name and address</td>
-            <td style={{ padding:'2px 6px', borderBottom:b, fontSize:8, color:'#555' }}>Description of test item:- <strong>COAL</strong></td>
+            <td style={{ width:'50%', padding:'2px 6px', borderRight:b, borderBottom:b, fontSize:7.5, color:'#555' }}>Customer Name and address</td>
+            <td style={{ padding:'2px 6px', borderBottom:b, fontSize:7.5, color:'#555' }}>Description of test item:- <strong>COAL</strong></td>
           </tr>
           <tr>
-            <td style={{ padding:'2px 6px 8px', borderRight:b, borderBottom:b, fontSize:10.5, verticalAlign:'top' }}>
+            <td style={{ padding:'3px 6px 7px', borderRight:b, borderBottom:b, fontSize:10, verticalAlign:'top' }}>
               <strong>{sample.client_name || '—'}</strong>
               {sample.client_address && sample.client_address.split('\n').map((l,i) => <span key={i}><br/>{l}</span>)}
-              {sample.contact_person && <><br/><span style={{ fontSize:9, color:'#555' }}>Attn: {sample.contact_person}</span></>}
+              {sample.contact_person && <><br/><span style={{ fontSize:8, color:'#555' }}>Attn: {sample.contact_person}</span></>}
             </td>
-            <td style={{ padding:'2px 6px 8px', borderBottom:b, fontSize:10.5, verticalAlign:'top' }}></td>
+            <td style={{ padding:'3px 6px 7px', borderBottom:b, fontSize:10, verticalAlign:'top' }}></td>
           </tr>
+          {/* Ambient row */}
           <tr>
             <td colSpan={2} style={{ padding:0, borderBottom:b }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding:'1px 6px', fontSize:8, color:'#555', borderRight:b, width:'25%' }}>Ambient Humidity (% RH)</td>
-                    <td style={{ padding:'1px 6px', fontSize:8, color:'#555', borderRight:b, width:'25%' }}>Ambient Temperature (°C)</td>
-                    <td style={{ padding:'1px 6px', fontSize:8, color:'#555', borderRight:b, width:'25%' }}>Customer Sample ID</td>
-                    <td style={{ padding:'1px 6px', fontSize:8, color:'#555', width:'25%' }}>Sample lab ID</td>
+                    <td style={{ padding:'1px 6px', fontSize:7.5, color:'#555', borderRight:b, width:'25%' }}>Ambient Humidity (% RH)</td>
+                    <td style={{ padding:'1px 6px', fontSize:7.5, color:'#555', borderRight:b, width:'25%' }}>Ambient Temperature (°C)</td>
+                    <td style={{ padding:'1px 6px', fontSize:7.5, color:'#555', borderRight:b, width:'25%' }}>Customer Sample ID</td>
+                    <td style={{ padding:'1px 6px', fontSize:7.5, color:'#555', width:'25%' }}>Sample lab ID</td>
                   </tr>
                   <tr>
-                    <td style={{ padding:'1px 6px', fontWeight:'bold', fontSize:13, borderRight:b }}>{sample.ambient_humidity || '—'}</td>
-                    <td style={{ padding:'1px 6px', fontWeight:'bold', fontSize:13, borderRight:b }}>{sample.ambient_temp || '—'}</td>
-                    <td style={{ padding:'1px 6px', fontWeight:'bold', fontSize:13, borderRight:b }}>{sample.sample_ref_id || '—'}</td>
-                    <td style={{ padding:'1px 6px', fontWeight:'bold', fontSize:13 }}>{sample.lab_internal_id || '—'}</td>
+                    <td style={{ padding:'2px 6px', fontWeight:'bold', fontSize:12, borderRight:b }}>{sample.ambient_humidity || '—'}</td>
+                    <td style={{ padding:'2px 6px', fontWeight:'bold', fontSize:12, borderRight:b }}>{sample.ambient_temp || '—'}</td>
+                    <td style={{ padding:'2px 6px', fontWeight:'bold', fontSize:12, borderRight:b }}>{sample.sample_ref_id || '—'}</td>
+                    <td style={{ padding:'2px 6px', fontWeight:'bold', fontSize:12 }}>{sample.lab_internal_id || '—'}</td>
                   </tr>
                 </tbody>
               </table>
             </td>
           </tr>
+          {/* Test method */}
           <tr>
-            <td colSpan={2} style={{ padding:'3px 6px', fontSize:9.5, fontWeight:'bold' }}>
+            <td colSpan={2} style={{ padding:'3px 6px', fontSize:8.5, fontStyle:'italic', fontWeight:'bold' }}>
               Test Method :IS1350 (Part-I) :2025 for TM and Proximate and IS1350 (Part-II) : 2022 for GCV analysis
             </td>
           </tr>
         </tbody>
       </table>
 
-      {/* TEST RESULTS */}
+      {/* ── TEST RESULTS TABLE ── */}
       <table style={{ width:'100%', borderCollapse:'collapse', border:b, borderTop:'none', flexShrink:0 }}>
         <thead>
           <tr>
-            <td colSpan={9} style={{ textAlign:'center', fontWeight:'bold', fontSize:12, padding:'3px 0', borderBottom:b }}>Test Results</td>
+            <td colSpan={9} style={{ textAlign:'center', fontWeight:'bold', fontSize:11, padding:'2px 0', borderBottom:b }}>Test Results</td>
           </tr>
           <tr>
-            <th rowSpan={2} style={TH({ verticalAlign:'middle', width:'10%' })}>Date of<br/>sample<br/>receipt</th>
-            <th rowSpan={2} style={TH({ verticalAlign:'middle', width:'15%' })}>Period of<br/>analysis</th>
-            <th rowSpan={2} style={TH({ verticalAlign:'middle', width:'8%' })}>Total<br/>Moisture<br/>(%)</th>
-            <th colSpan={3} style={TH({ borderBottom:b })}>Air Dried Basis (ADB)</th>
-            <th colSpan={3} style={TH({ borderRight:'none', borderBottom:b })}>Equilibrated basis (60% RH and 40°C)</th>
+            {/* rowspan cells */}
+            <th rowSpan={2} style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b, verticalAlign:'middle', width:'9%' }}>Date of<br/>sample<br/>receipt</th>
+            <th rowSpan={2} style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b, verticalAlign:'middle', width:'13%' }}>Period of<br/>analysis</th>
+            <th rowSpan={2} style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b, verticalAlign:'middle', width:'8%' }}>Total<br/>Moisture<br/>(%)</th>
+            {/* ADB group */}
+            <th colSpan={3} style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b }}>Air Dried Basis (ADB)</th>
+            {/* EQ group */}
+            <th colSpan={3} style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderBottom:b }}>Equilibrated basis (60% RH and 40°C)</th>
           </tr>
           <tr>
-            <th style={TH()}>Moisture<br/>(%)</th>
-            <th style={TH()}>Ash<br/>(%)</th>
-            <th style={TH()}>GCV<br/>(kCal/kg)</th>
-            <th style={TH()}>Moisture<br/>(%)</th>
-            <th style={TH()}>Ash<br/>(%)</th>
-            <th style={TH({ borderRight:'none' })}>GCV<br/>(kCal/kg) &nbsp; Grade</th>
+            <th style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b }}>Moisture<br/>(%)</th>
+            <th style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b }}>Ash<br/>(%)</th>
+            <th style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b }}>GCV<br/>(kCal/kg)</th>
+            <th style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b }}>Moisture<br/>(%)</th>
+            <th style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderRight:b, borderBottom:b }}>Ash<br/>(%)</th>
+            {/* last col: GCV + Grade combined like reference */}
+            <th style={{ padding:'2px 3px', fontSize:8, textAlign:'center', fontWeight:'normal', borderBottom:b }}>GCV<br/>(kCal/kg) &nbsp; Grade</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style={TD()}>{recv}</td>
-            <td style={TD({ fontSize:9 })}>{period}</td>
-            <td style={TD()}>{tTM?.result_value  ?? '—'}</td>
-            <td style={TD()}>{tAM?.result_value  ?? '—'}</td>
-            <td style={TD()}>{tAA?.result_value  ?? '—'}</td>
-            <td style={TD()}>{tGCV?.result_value ?? '—'}</td>
-            <td style={TD()}>{tEQM?.result_value ?? '—'}</td>
-            <td style={TD()}>{tEQA?.result_value ?? '—'}</td>
-            <td style={TD({ borderRight:'none' })}>
-              {eqGcv ?? '—'}&nbsp;&nbsp;<strong style={{ fontSize:12 }}>{grade}</strong>
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b }}>{recv}</td>
+            <td style={{ padding:'4px 3px', fontSize:8.5, textAlign:'center', borderRight:b, whiteSpace:'pre-line' }}>{period}</td>
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b }}>{tTM?.result_value  ?? '—'}</td>
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b }}>{tAM?.result_value  ?? '—'}</td>
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b }}>{tAA?.result_value  ?? '—'}</td>
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b }}>{tGCV?.result_value ?? '—'}</td>
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b }}>{tEQM?.result_value ?? '—'}</td>
+            {/* EQ Ash — not tracked, placeholder */}
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center', borderRight:b, color:'#999' }}>—</td>
+            {/* EQ GCV + Grade */}
+            <td style={{ padding:'4px 3px', fontSize:10, textAlign:'center' }}>
+              {eqGcv ?? '—'}&nbsp;&nbsp;<strong style={{ fontSize:11 }}>{grade}</strong>
             </td>
           </tr>
         </tbody>
       </table>
 
-      {/* PARR + SIGNATURE */}
-      <div style={{ display:'flex', gap:8, marginTop:6, flexShrink:0, height:144 }}>
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      {/* ── PARR IMAGE (left) + STAMP + SIGNATURE (right) ── */}
+      <div style={{ display:'flex', gap:8, marginTop:6, flexShrink:0, alignItems:'flex-start', height:148 }}>
+        {/* Parr image */}
+        <div style={{ flex:'0 0 60%', height:148, display:'flex', alignItems:'center', justifyContent:'center' }}>
           {parrImg
-            ? <img src={parrImg} alt="Parr" style={{ maxWidth:'100%', maxHeight:144, objectFit:'contain' }} />
-            : <div style={{ border:'1px dashed #ccc', width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#bbb', fontSize:9, fontFamily:"'Courier New',monospace", gap:4 }}>
-                <span style={{ fontSize:20 }}>🖨️</span>
+            ? <img src={parrImg} alt="Parr" crossOrigin="anonymous" style={{ maxWidth:'100%', maxHeight:148, objectFit:'contain', display:'block' }} />
+            : <div style={{ border:'1px dashed #bbb', width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#bbb', fontSize:8.5, gap:4 }}>
+                <span style={{ fontSize:18 }}>🖨️</span>
                 <span>Parr 6400 Calorimeter printout</span>
-                <span style={{ fontSize:8 }}>Upload image via GCV test</span>
+                <span style={{ fontSize:7.5 }}>Upload image via GCV test</span>
               </div>}
         </div>
-        <div style={{ width:172, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4 }}>
+        {/* Auth block */}
+        <div style={{ flex:'0 0 38%', height:148, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4 }}>
           {stampImg
-            ? <img src={stampImg} alt="stamp" style={{ width:72, height:72, objectFit:'contain' }} />
-            : <div style={{ width:72, height:72, borderRadius:'50%', border:'1px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#ccc' }}>Stamp</div>}
-          <div style={{ fontSize:8.5, color:'#333' }}>Reviewed and Authorised By</div>
+            ? <img src={stampImg} alt="stamp" style={{ width:68, height:68, objectFit:'contain' }} />
+            : <div style={{ width:68, height:68, borderRadius:'50%', border:'1px dashed #bbb', display:'flex', alignItems:'center', justifyContent:'center', fontSize:7.5, color:'#bbb', textAlign:'center' }}>Stamp</div>}
+          <div style={{ fontSize:8, color:'#333', textAlign:'center' }}>Reviewed and Authorised By</div>
           {sigImg
-            ? <img src={sigImg} alt="sig" style={{ maxWidth:148, maxHeight:42, objectFit:'contain' }} />
-            : <div style={{ width:148, height:30, borderBottom:'1px solid #333', display:'flex', alignItems:'flex-end', justifyContent:'center', paddingBottom:2, fontSize:8, color:'#ccc', fontStyle:'italic' }}>Signature</div>}
-          <div style={{ fontSize:10.5 }}>{auth}</div>
+            ? <img src={sigImg} alt="sig" style={{ maxWidth:140, maxHeight:36, objectFit:'contain' }} />
+            : <div style={{ width:140, height:28, borderBottom:'1px solid #333', display:'flex', alignItems:'flex-end', justifyContent:'center', paddingBottom:2, fontSize:7.5, color:'#bbb', fontStyle:'italic' }}>Signature</div>}
+          <div style={{ fontSize:10, fontWeight:'bold', textAlign:'center' }}>{auth}</div>
         </div>
       </div>
 
-      {/* DECLARATION */}
-      <div style={{ marginTop:6, fontSize:8, lineHeight:1.48, color:'#111', flexShrink:0 }}>
+      {/* ── DECLARATION ── */}
+      <div style={{ marginTop:5, fontSize:7.5, lineHeight:1.45, color:'#111', flexShrink:0 }}>
         <span style={{ fontWeight:'bold' }}>Declaration: </span>
         1. The test results relates only to the sample submitted for testing and as per Lab scope. Product endorsement is neither inferred nor implied.{' '}
         2. This report cannot be reproduced except in full without prior written approval from the laboratory head.{' '}
@@ -284,30 +298,33 @@ export default function CoalTestReport({ sample, tests, onClose }) {
         4. The sample will be retained for three months.{' '}
         5. Total liability of the laboratory of this report is limited only to the invoiced amount.{' '}
         6. All disputes are subject to Vadodara Jurisdiction.{' '}
-        7. Sampling is not done by the laboratory.{' '}
+        7. Sampling is not done by the laboratory{' '}
         8. This report relates to only to the particular sample as received for testing.{' '}
         9. Grade of coal is given basis of Gcv on EQ Basis as per Gazzette notification from Ministry of coal for Declaration of Grade.
       </div>
 
-      {/* END OF REPORT */}
-      <div style={{ textAlign:'center', margin:'5px 0 3px', fontSize:9, fontWeight:'bold', letterSpacing:0.4, flexShrink:0 }}>
+      {/* ── END OF REPORT ── */}
+      <div style={{ textAlign:'center', margin:'5px 0 3px', fontSize:8.5, fontWeight:'bold', letterSpacing:0.5, flexShrink:0 }}>
         ---------------END OF REPORT---------------
       </div>
 
-      {/* FOOTER — pushed to bottom */}
-      <div style={{ borderTop:'2px solid #000', paddingTop:4, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexShrink:0, marginTop:'auto' }}>
-        <div style={{ fontSize:7.5, width:'34%', lineHeight:1.45 }}>
+      {/* ── FOOTER ── */}
+      <div style={{ borderTop:b2, paddingTop:4, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexShrink:0, marginTop:'auto' }}>
+        {/* Left: lab address */}
+        <div style={{ fontSize:7, width:'32%', lineHeight:1.5 }}>
           Laboratory: Plot No-14, AstankarBhavan, Behind TukaramSabhagruha,<br/>
           SuyogNagar, District Nagpur - 440015, Maharashtra, India.<br/>
           <span style={{ color:'#555' }}>Format: QCI/F25/09/01/QCI-CIL &nbsp; Date: {today} &nbsp; Rev: 04</span>
         </div>
+        {/* Center: company name */}
         <div style={{ textAlign:'center', flex:1 }}>
-          <div style={{ fontSize:8.5, color:'#666' }}>Unit of</div>
-          <div style={{ fontSize:21, fontWeight:'bold', fontFamily:'Georgia,serif' }}>
+          <div style={{ fontSize:8, color:'#555' }}>Unit of</div>
+          <div style={{ fontSize:19, fontWeight:'bold', fontFamily:'Georgia, serif', letterSpacing:0.3 }}>
             Ravi Energie<span style={{ fontStyle:'italic' }}> Pvt. Ltd</span>
           </div>
         </div>
-        <div style={{ fontSize:7.5, width:'28%', textAlign:'right', lineHeight:1.5 }}>
+        {/* Right: contact */}
+        <div style={{ fontSize:7, width:'28%', textAlign:'right', lineHeight:1.5 }}>
           Corporate Office: S15 A/B India Bulls Mega Mall,<br/>
           Jetalpur Road, Vadodara – 390 020, India<br/>
           Phone: +91 8320021741<br/>
@@ -315,10 +332,11 @@ export default function CoalTestReport({ sample, tests, onClose }) {
           Website: www.ravienergie.com
         </div>
       </div>
+
     </div>
   );
 
-  // ── SHELL ─────────────────────────────────────────────────────────────────────
+  // ── SHELL (sidebar + preview) ─────────────────────────────────────────────
   return (
     <div style={{ display:'flex', height:'100vh', background:'#dde3ec', fontFamily:"'Segoe UI',Helvetica,sans-serif", overflow:'hidden' }}>
 
@@ -352,20 +370,19 @@ export default function CoalTestReport({ sample, tests, onClose }) {
               <SR label="Client"          v={sample.client_name} />
               <SR label="Date Received"   v={recv} />
               <SR label="Report Date"     v={rptDate} />
-              <SR label="Analysis Period" v={period} mono />
               <SD label="Test Results" />
               <SR label="Total Moisture"  v={tTM  ? `${tTM.result_value} %`        : '—'} />
               <SR label="Moisture ADB"    v={tAM  ? `${tAM.result_value} %`        : '—'} />
               <SR label="Ash ADB"         v={tAA  ? `${tAA.result_value} %`        : '—'} />
               <SR label="GCV ADB"         v={tGCV ? `${tGCV.result_value} kCal/kg` : '—'} />
               <SR label="Moisture EQ"     v={tEQM ? `${tEQM.result_value} %`       : '—'} />
-              <SR label="Ash EQ"          v={tEQA ? `${tEQA.result_value} %`       : '—'} />
-              <SR label="GCV EQ"          v={eqGcv ? `${eqGcv} kCal/kg`           : '—'} />
+              <SR label="VM ADB"          v={tVM  ? `${tVM.result_value} %`        : '—'} />
+              <SR label="EQ GCV (est.)"   v={eqGcv ? `${eqGcv} kCal/kg`           : '—'} />
               <SR label="Grade"           v={grade} hi />
               <SD label="Auth" />
               <SR label="Authorised By"   v={auth} />
               <SR label="Parr Image"      v={parrImg ? '✓ Attached' : '✗ Missing'} ok={!!parrImg} />
-              <SR label="Humidity (RH)"   v={sample.ambient_humidity || '—'} />
+              <SR label="Humidity"        v={sample.ambient_humidity ? `${sample.ambient_humidity} %RH` : '—'} />
               <SR label="Temperature"     v={sample.ambient_temp ? `${sample.ambient_temp} °C` : '—'} />
             </div>
           ) : (
