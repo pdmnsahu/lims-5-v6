@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { sql } from '../db/client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { generateReportPDF } from '../lib/pdfGenerator.js';
+import { generateReportPDF } from '../lib/pdfReport.js';
 
 const router = Router();
 router.use(authenticate);
 
-// GET /api/reports/sample/:sampleId/pdf  — Puppeteer PDF download
+// GET /api/reports/sample/:sampleId/pdf — PDFKit direct download
 router.get('/sample/:sampleId/pdf', authorize('admin', 'lab_manager', 'super_admin'), async (req, res) => {
   try {
     const [sample] = await sql`
@@ -46,10 +46,9 @@ router.get('/sample/:sampleId/pdf', authorize('admin', 'lab_manager', 'super_adm
     `;
 
     const [settings] = await sql`SELECT * FROM lab_settings WHERE id = 'default'`;
+    const pdfBuffer  = await generateReportPDF({ sample, tests, settings: settings || {} });
+    const filename   = `TestReport_${sample.lab_internal_id || sample.sample_ref_id || 'report'}.pdf`;
 
-    const pdfBuffer = await generateReportPDF({ sample, tests, settings: settings || {} });
-
-    const filename = `TestReport_${sample.lab_internal_id || sample.sample_ref_id || 'report'}.pdf`;
     res.set({
       'Content-Type':        'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
@@ -62,8 +61,7 @@ router.get('/sample/:sampleId/pdf', authorize('admin', 'lab_manager', 'super_adm
   }
 });
 
-// GET /api/reports/sample/:sampleId
-// Returns a sample with ALL its approved tests — for the "one sample, one report" PDF
+// GET /api/reports/sample/:sampleId — JSON (for legacy/preview use)
 router.get('/sample/:sampleId', authorize('admin', 'lab_manager', 'super_admin'), async (req, res) => {
   try {
     const [sample] = await sql`
@@ -110,7 +108,7 @@ router.get('/sample/:sampleId', authorize('admin', 'lab_manager', 'super_admin')
   }
 });
 
-// GET /api/reports/group/:id — all samples + their approved tests
+// GET /api/reports/group/:id
 router.get('/group/:id', authorize('admin', 'lab_manager', 'super_admin'), async (req, res) => {
   try {
     const [group] = await sql`
@@ -144,19 +142,19 @@ router.get('/group/:id', authorize('admin', 'lab_manager', 'super_admin'), async
   }
 });
 
-// GET /api/reports/overview — super_admin sees everything
+// GET /api/reports/overview
 router.get('/overview', authorize('super_admin'), async (req, res) => {
   try {
     const stats = await sql`
       SELECT
-        (SELECT COUNT(*)::int FROM sample_groups)                                           AS total_groups,
-        (SELECT COUNT(*)::int FROM samples)                                                 AS total_samples,
-        (SELECT COUNT(*)::int FROM sample_tests)                                            AS total_tests,
-        (SELECT COUNT(*)::int FROM sample_tests WHERE status='approved')                    AS approved_tests,
-        (SELECT COUNT(*)::int FROM sample_tests WHERE status='submitted')                   AS pending_review,
-        (SELECT COUNT(*)::int FROM sample_tests WHERE status='rejected')                    AS rejected_tests,
-        (SELECT COUNT(*)::int FROM sample_tests WHERE status='pending')                     AS unsubmitted_tests,
-        (SELECT COUNT(*)::int FROM sample_groups WHERE status='completed')                  AS completed_groups
+        (SELECT COUNT(*)::int FROM sample_groups)                               AS total_groups,
+        (SELECT COUNT(*)::int FROM samples)                                     AS total_samples,
+        (SELECT COUNT(*)::int FROM sample_tests)                                AS total_tests,
+        (SELECT COUNT(*)::int FROM sample_tests WHERE status='approved')        AS approved_tests,
+        (SELECT COUNT(*)::int FROM sample_tests WHERE status='submitted')       AS pending_review,
+        (SELECT COUNT(*)::int FROM sample_tests WHERE status='rejected')        AS rejected_tests,
+        (SELECT COUNT(*)::int FROM sample_tests WHERE status='pending')         AS unsubmitted_tests,
+        (SELECT COUNT(*)::int FROM sample_groups WHERE status='completed')      AS completed_groups
     `;
     res.json(stats[0]);
   } catch (err) {
