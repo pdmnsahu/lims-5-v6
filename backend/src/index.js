@@ -15,8 +15,6 @@ import uploadRoutes      from './routes/upload.js';
 import auditRoutes       from './routes/audit.js';
 import ambientRoutes     from './routes/ambient.js';
 import settingsRoutes    from './routes/settings.js';
-import pdfRoutes         from './routes/pdf'
-
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -37,7 +35,6 @@ app.use('/api/upload',           uploadRoutes);
 app.use('/api/audit',            auditRoutes);
 app.use('/api/ambient',          ambientRoutes);
 app.use('/api/settings',         settingsRoutes);
-app.use('/api/pdf',              pdfRoutes);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date() }));
 app.use((_, res) => res.status(404).json({ error: 'Route not found' }));
