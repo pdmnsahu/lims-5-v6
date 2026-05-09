@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { api } from '../../lib/api';
-import { Alert, Field } from '../shared/UI';
+import { api } from '../lib/api';
+import { Alert, Field } from '../components/shared/UI';
 import { Save, Upload, Check } from 'lucide-react';
 
 const IMAGE_FIELDS = [
