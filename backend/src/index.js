@@ -14,6 +14,7 @@ import bulkAssignRoutes  from './routes/bulkAssign.js';
 import uploadRoutes      from './routes/upload.js';
 import auditRoutes       from './routes/audit.js';
 import ambientRoutes     from './routes/ambient.js';
+import settingsRoutes    from './routes/settings.js';
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -33,6 +34,7 @@ app.use('/api/bulk-assign',      bulkAssignRoutes);
 app.use('/api/upload',           uploadRoutes);
 app.use('/api/audit',            auditRoutes);
 app.use('/api/ambient',          ambientRoutes);
+app.use('/api/settings',         settingsRoutes);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date() }));
 app.use((_, res) => res.status(404).json({ error: 'Route not found' }));

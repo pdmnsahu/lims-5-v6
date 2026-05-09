@@ -101,6 +101,29 @@ async function setup() {
   await sql`CREATE INDEX IF NOT EXISTS idx_audit_entity  ON audit_logs(entity_type)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)`;
 
+  // ── LAB SETTINGS (single row, always upserted) ─────────────────────────────
+  await sql`
+    CREATE TABLE IF NOT EXISTS lab_settings (
+      id            TEXT PRIMARY KEY DEFAULT 'default',
+      lab_name      TEXT DEFAULT 'Ravi Energie Laboratory',
+      lab_address   TEXT DEFAULT 'Plot No14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.',
+      lab_phone     TEXT DEFAULT '+91 8320021741',
+      lab_email     TEXT DEFAULT 'lab@ravienergie.com',
+      lab_website   TEXT DEFAULT 'www.ravienergie.com',
+      corp_office   TEXT DEFAULT 'S15 A/B India Bulls Mega Mall, Jetalpur Road, Vadodara - 390 020, India',
+      logo_url      TEXT,
+      accreditation_url TEXT,
+      stamp_url     TEXT,
+      signature_url TEXT,
+      updated_at    TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+  // Ensure the default row exists
+  await sql`
+    INSERT INTO lab_settings (id) VALUES ('default')
+    ON CONFLICT (id) DO NOTHING
+  `;
+
   console.log('✅ Tables created / verified');
 
   const superUsername = 'superadmin.relims';

@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { api } from '../lib/api';
 
 function dd(d) {
   if (!d) return '—';
@@ -20,28 +21,21 @@ function deriveGrade(v) {
 
 export default function CoalTestReport({ sample, tests, onClose }) {
   const reportRef = useRef();
-  const [logoImg,  setLogoImg]  = useState(null);
-  const [accImg,   setAccImg]   = useState(null);
-  const [stampImg, setStampImg] = useState(null);
-  const [sigImg,   setSigImg]   = useState(null);
-  const [tab,      setTab]      = useState('data');
   const [busy,     setBusy]     = useState(false);
+  const [settings, setSettings] = useState(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
-  const logoRef  = useRef(); const accRef   = useRef();
-  const stampRef = useRef(); const sigRef   = useRef();
-
-  const upload = (e, set) => {
-    const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = ev => set(ev.target.result);
-    r.readAsDataURL(f);
-  };
-
+  // ── Load html2pdf from CDN + lab settings on mount ──────────────────────────
   useEffect(() => {
-    if (window.html2pdf) return;
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-    document.head.appendChild(s);
+    if (!window.html2pdf) {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      document.head.appendChild(s);
+    }
+    api.getSettings()
+      .then(data => setSettings(data))
+      .catch(() => setSettings({}))
+      .finally(() => setSettingsLoading(false));
   }, []);
 
   const downloadPdf = async () => {
@@ -87,6 +81,20 @@ export default function CoalTestReport({ sample, tests, onClose }) {
   const rptNo  = sample.lab_internal_id || sample.sample_ref_id || '—';
   const today  = dd(new Date());
 
+  // Images — locked, come from settings set by super admin
+  const logoImg  = settings?.logo_url          || null;
+  const accImg   = settings?.accreditation_url || null;
+  const stampImg = settings?.stamp_url         || null;
+  const sigImg   = settings?.signature_url     || null;
+
+  // Lab info from settings with fallbacks
+  const labName    = settings?.lab_name    || 'Ravi Energie Laboratory';
+  const labAddress = settings?.lab_address || 'Plot No14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.';
+  const labPhone   = settings?.lab_phone   || '+91 8320021741';
+  const labEmail   = settings?.lab_email   || 'lab@ravienergie.com';
+  const labWebsite = settings?.lab_website || 'www.ravienergie.com';
+  const corpOffice = settings?.corp_office || 'S15 A/B India Bulls Mega Mall, Jetalpur Road, Vadodara – 390 020, India';
+
   const b  = '1px solid #000';
   const b2 = '1.5px solid #000';
 
@@ -99,45 +107,14 @@ export default function CoalTestReport({ sample, tests, onClose }) {
     borderRight:b, whiteSpace:'pre-line', ...ex,
   });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FIXED SECTION HEIGHTS (px) — must sum to 1103 (= 1123 - 10top - 10bot padding)
-  //
-  //  Header (logo row):          57
-  //  Address bar:                13
-  //  Format line:                13
-  //  Title box (4 rows):         62
-  //  Customer box:               88
-  //  Ambient row:                26
-  //  Test method row:            16
-  //  Results table header:       38
-  //  Results table data:         22
-  //  Parr + signature block:    196   ← fixed, not flex:1
-  //  Declaration:                78
-  //  End of report line:         14
-  //  Footer:                     38
-  //  Gaps (margins between):     42
-  //                            ----
-  //  Total:                    1103  ✓
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const ImgUpload = ({ label, val, set, ref_ }) => (
-    <div style={{ marginBottom:12 }}>
-      <div style={{ fontSize:10, fontWeight:700, color:'#64748b', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</div>
-      <div onClick={() => ref_.current?.click()} style={{ border:`2px dashed ${val?'#94a3b8':'#cbd5e1'}`, borderRadius:6, padding:10, textAlign:'center', cursor:'pointer', background:val?'#f8fafc':'#f1f5f9', minHeight:64, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:3 }}>
-        {val ? <img src={val} alt={label} style={{ maxHeight:60, maxWidth:'100%', objectFit:'contain' }} />
-             : <><span style={{ fontSize:16 }}>📎</span><span style={{ fontSize:10, color:'#94a3b8' }}>Click to upload</span></>}
-      </div>
-      <input ref={ref_} type="file" accept="image/*" style={{ display:'none' }} onChange={e => upload(e, set)} />
-    </div>
-  );
-
+  // ── A4 PAGE — every section has a fixed height so total = exactly 1123px ───
   const Page = () => (
     <div ref={reportRef} style={{
       width:794, height:1123, overflow:'hidden',
       background:'#fff', fontFamily:"'Times New Roman',Times,serif",
       fontSize:10, color:'#000', boxSizing:'border-box',
       padding:'10px 15px 10px 15px',
-      display:'flex', flexDirection:'column', gap:0,
+      display:'flex', flexDirection:'column',
     }}>
 
       {/* HEADER — h:57 */}
@@ -148,19 +125,19 @@ export default function CoalTestReport({ sample, tests, onClose }) {
             : <div style={{ width:96, height:54, border:'1px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#ccc', textAlign:'center' }}>Logo</div>}
         </div>
         <div style={{ textAlign:'center', flex:1 }}>
-          <div style={{ fontSize:16, fontWeight:'bold', letterSpacing:0.3 }}>Ravi Energie Laboratory</div>
+          <div style={{ fontSize:16, fontWeight:'bold', letterSpacing:0.3 }}>{labName}</div>
         </div>
         <div style={{ width:96, height:54, display:'flex', justifyContent:'flex-end', alignItems:'center', flexShrink:0 }}>
           {accImg
-            ? <img src={accImg} alt="acc" style={{ width:96, height:54, objectFit:'contain' }} />
+            ? <img src={accImg} alt="accreditation" style={{ width:96, height:54, objectFit:'contain' }} />
             : <div style={{ width:96, height:54, border:'1px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, color:'#ccc', textAlign:'center' }}>Accreditation</div>}
         </div>
       </div>
 
       {/* ADDRESS BAR — h:13 */}
       <div style={{ height:13, borderTop:'2px solid #000', borderBottom:'1px solid #000', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:6.5, flexShrink:0, marginBottom:2, overflow:'hidden', paddingLeft:2, paddingRight:2 }}>
-        <span>Laboratory: Plot No14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.</span>
-        <span>Phone:+91 8320021741 | Email: lab@ravienergie.com | Website: www.ravienergie.com</span>
+        <span>Laboratory: {labAddress}</span>
+        <span>Phone:{labPhone} | Email: {labEmail} | Website: {labWebsite}</span>
       </div>
 
       {/* FORMAT LINE — h:13 */}
@@ -202,7 +179,7 @@ export default function CoalTestReport({ sample, tests, onClose }) {
         </table>
       </div>
 
-      {/* CUSTOMER BOX — h:88 (fixed — clips long addresses) */}
+      {/* CUSTOMER BOX — h:88 */}
       <div style={{ height:88, flexShrink:0, overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', border:b, borderTop:'none' }}>
           <tbody>
@@ -211,8 +188,7 @@ export default function CoalTestReport({ sample, tests, onClose }) {
               <td style={{ padding:'1px 5px', borderBottom:b, fontSize:7, color:'#555' }}>Description of test item:- <strong>COAL</strong></td>
             </tr>
             <tr>
-              {/* Fixed height customer cell — overflow hidden prevents multi-line addresses from expanding */}
-              <td style={{ height:64, padding:'2px 5px', borderRight:b, fontSize:10, verticalAlign:'top', overflow:'hidden', maxHeight:64 }}>
+              <td style={{ height:64, padding:'2px 5px', borderRight:b, fontSize:10, verticalAlign:'top', overflow:'hidden' }}>
                 <div style={{ overflow:'hidden', maxHeight:60 }}>
                   <strong>{sample.client_name || '—'}</strong>
                   {sample.client_address && <><br/><span style={{ fontSize:8.5 }}>{sample.client_address.replace(/\n/g,', ')}</span></>}
@@ -258,7 +234,7 @@ export default function CoalTestReport({ sample, tests, onClose }) {
         </table>
       </div>
 
-      {/* TEST RESULTS TABLE — h:60 (header 38 + data 22) */}
+      {/* TEST RESULTS TABLE — h:60 */}
       <div style={{ height:60, flexShrink:0, overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', border:b, borderTop:'none' }}>
           <thead>
@@ -299,26 +275,24 @@ export default function CoalTestReport({ sample, tests, onClose }) {
         </table>
       </div>
 
-      {/* PARR IMAGE + SIGNATURE — h:196 (fixed, never grows) */}
+      {/* PARR IMAGE + SIGNATURE — h:196 */}
       <div style={{ height:196, flexShrink:0, display:'flex', gap:6, marginTop:5, overflow:'hidden' }}>
-        {/* Parr image — left 60% */}
         <div style={{ width:'60%', height:196, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
           {parrImg
-            ? <img src={parrImg} alt="Parr" style={{ maxWidth:'100%', maxHeight:196, objectFit:'contain' }} />
+            ? <img src={parrImg} alt="Parr calorimeter" style={{ maxWidth:'100%', maxHeight:196, objectFit:'contain' }} />
             : <div style={{ border:'1px dashed #ccc', width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#bbb', fontSize:8.5, gap:4 }}>
                 <span style={{ fontSize:20 }}>🖨️</span>
                 <span>Parr 6400 Calorimeter printout</span>
                 <span style={{ fontSize:7.5 }}>Upload image via GCV test</span>
               </div>}
         </div>
-        {/* Signature block — right 40% */}
         <div style={{ width:'40%', height:196, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5 }}>
           {stampImg
             ? <img src={stampImg} alt="stamp" style={{ width:68, height:68, objectFit:'contain' }} />
             : <div style={{ width:68, height:68, borderRadius:'50%', border:'1px dashed #ccc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:7.5, color:'#ccc' }}>Stamp</div>}
           <div style={{ fontSize:8.5, color:'#333', textAlign:'center' }}>Reviewed and Authorised By</div>
           {sigImg
-            ? <img src={sigImg} alt="sig" style={{ maxWidth:140, maxHeight:38, objectFit:'contain' }} />
+            ? <img src={sigImg} alt="signature" style={{ maxWidth:140, maxHeight:38, objectFit:'contain' }} />
             : <div style={{ width:140, height:26, borderBottom:'1px solid #333', display:'flex', alignItems:'flex-end', justifyContent:'center', paddingBottom:2, fontSize:7.5, color:'#ccc', fontStyle:'italic' }}>Signature</div>}
           <div style={{ fontSize:10, fontWeight:'bold', textAlign:'center' }}>{auth}</div>
         </div>
@@ -343,11 +317,10 @@ export default function CoalTestReport({ sample, tests, onClose }) {
         ---------------END OF REPORT---------------
       </div>
 
-      {/* FOOTER — h:38, pinned to bottom via marginTop:auto */}
+      {/* FOOTER — h:38, pinned to bottom */}
       <div style={{ height:38, flexShrink:0, borderTop:'2px solid #000', paddingTop:3, display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginTop:'auto', overflow:'hidden' }}>
         <div style={{ fontSize:6.5, width:'32%', lineHeight:1.35 }}>
-          Laboratory: Plot No-14, AstankarBhavan, Behind TukaramSabhagruha,<br/>
-          SuyogNagar, District Nagpur - 440015, Maharashtra, India.<br/>
+          Laboratory: {labAddress}<br/>
           <span style={{ color:'#555' }}>Format: QCI/F25/09/01/QCI-CIL &nbsp; Date: {today} &nbsp; Rev: 04</span>
         </div>
         <div style={{ textAlign:'center', flex:1 }}>
@@ -357,10 +330,9 @@ export default function CoalTestReport({ sample, tests, onClose }) {
           </div>
         </div>
         <div style={{ fontSize:6.5, width:'26%', textAlign:'right', lineHeight:1.35 }}>
-          Corporate Office: S15 A/B India Bulls Mega Mall,<br/>
-          Jetalpur Road, Vadodara – 390 020, India<br/>
-          Phone: +91 8320021741 | Email: lab@ravienergie.com<br/>
-          Website: www.ravienergie.com
+          {corpOffice}<br/>
+          Phone: {labPhone} | Email: {labEmail}<br/>
+          Website: {labWebsite}
         </div>
       </div>
 
@@ -380,27 +352,32 @@ export default function CoalTestReport({ sample, tests, onClose }) {
           </div>
         </div>
 
-        <div style={{ display:'flex', borderBottom:'1px solid #e2e8f0' }}>
-          {[['data','📋 Data'],['images','🖼️ Images']].map(([k,l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{
-              flex:1, padding:'8px 0', border:'none',
-              background: tab===k ? '#f8fafc' : '#fff',
-              borderBottom: tab===k ? '2px solid #111827' : '2px solid transparent',
-              fontWeight: tab===k ? 700 : 400, fontSize:11.5,
-              cursor:'pointer', color: tab===k ? '#111827' : '#6b7280',
-            }}>{l}</button>
-          ))}
-        </div>
-
+        {/* Data summary */}
         <div style={{ flex:1, overflowY:'auto', padding:'12px 14px' }}>
-          {tab === 'data' ? (
+          {settingsLoading ? (
+            <div style={{ display:'flex', justifyContent:'center', padding:'20px 0' }}>
+              <div style={{ width:18, height:18, border:'2px solid #e5e7eb', borderTopColor:'#111827', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+            </div>
+          ) : (
             <div style={{ fontSize:11.5 }}>
-              <SR label="Lab ID"          v={sample.lab_internal_id} />
-              <SR label="Sample Ref"      v={sample.sample_ref_id} />
-              <SR label="Group"           v={sample.group_ref_id} />
-              <SR label="Client"          v={sample.client_name} />
-              <SR label="Date Received"   v={recv} />
-              <SR label="Report Date"     v={rptDate} />
+              {/* Images status */}
+              <SD label="Report Images" />
+              <SR label="Logo"          v={logoImg  ? '✓ Set' : '✗ Not set'} ok={!!logoImg} />
+              <SR label="Accreditation" v={accImg   ? '✓ Set' : '✗ Not set'} ok={!!accImg} />
+              <SR label="Stamp"         v={stampImg ? '✓ Set' : '✗ Not set'} ok={!!stampImg} />
+              <SR label="Signature"     v={sigImg   ? '✓ Set' : '✗ Not set'} ok={!!sigImg} />
+              {(!logoImg || !accImg || !stampImg || !sigImg) && (
+                <div style={{ fontSize:10, color:'#d97706', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:6, padding:'6px 8px', marginTop:6, lineHeight:1.5 }}>
+                  Some images are not set. Ask the super admin to upload them in Lab Settings.
+                </div>
+              )}
+              {/* Test data */}
+              <SD label="Sample Info" />
+              <SR label="Lab ID"        v={sample.lab_internal_id} />
+              <SR label="Sample Ref"    v={sample.sample_ref_id} />
+              <SR label="Client"        v={sample.client_name} />
+              <SR label="Date Received" v={recv} />
+              <SR label="Report Date"   v={rptDate} />
               <SD label="Test Results" />
               <SR label="Total Moisture"  v={tTM  ? `${tTM.result_value} %`        : '—'} />
               <SR label="Moisture ADB"    v={tAM  ? `${tAM.result_value} %`        : '—'} />
@@ -410,33 +387,20 @@ export default function CoalTestReport({ sample, tests, onClose }) {
               <SR label="Moisture EQ"     v={tEQM ? `${tEQM.result_value} %`       : '—'} />
               <SR label="GCV EQ (est.)"   v={eqGcv ? `${eqGcv} kCal/kg`           : '—'} />
               <SR label="Grade"           v={grade} hi />
-              <SD label="Authorisation" />
-              <SR label="Authorised By"   v={auth} />
               <SR label="Parr Image"      v={parrImg ? '✓ Attached' : '✗ Missing'} ok={!!parrImg} />
-              <SR label="Humidity (RH)"   v={sample.ambient_humidity || '—'} />
-              <SR label="Temperature"     v={sample.ambient_temp ? `${sample.ambient_temp} °C` : '—'} />
             </div>
-          ) : (
-            <>
-              <ImgUpload label="Company Logo (top-left)"         val={logoImg}  set={setLogoImg}  ref_={logoRef} />
-              <ImgUpload label="Accreditation Badge (top-right)" val={accImg}   set={setAccImg}   ref_={accRef} />
-              <ImgUpload label="Lab Stamp (circular)"            val={stampImg} set={setStampImg} ref_={stampRef} />
-              <ImgUpload label="Authorised Signature"            val={sigImg}   set={setSigImg}   ref_={sigRef} />
-              <div style={{ fontSize:9.5, color:'#94a3b8', marginTop:4, padding:'7px 10px', background:'#f8fafc', borderRadius:6, lineHeight:1.5 }}>
-                Parr calorimeter image is pulled automatically from the GCV test upload.
-              </div>
-            </>
           )}
         </div>
 
+        {/* Buttons */}
         <div style={{ padding:'10px 14px', borderTop:'1px solid #e2e8f0', display:'flex', flexDirection:'column', gap:7 }}>
-          <button onClick={downloadPdf} disabled={busy} style={{
+          <button onClick={downloadPdf} disabled={busy || settingsLoading} style={{
             width:'100%', padding:'10px 0',
-            background: busy ? '#4b5563' : '#111827',
+            background: (busy || settingsLoading) ? '#4b5563' : '#111827',
             color:'#fff', border:'none', borderRadius:7,
-            fontWeight:700, fontSize:13, cursor: busy ? 'not-allowed' : 'pointer',
+            fontWeight:700, fontSize:13, cursor: (busy || settingsLoading) ? 'not-allowed' : 'pointer',
           }}>
-            {busy ? '⏳ Generating…' : '⬇️ Download PDF'}
+            {busy ? '⏳ Generating…' : settingsLoading ? '⏳ Loading…' : '⬇️ Download PDF'}
           </button>
           <button onClick={onClose} style={{
             width:'100%', padding:'8px 0', background:'#fff', color:'#6b7280',

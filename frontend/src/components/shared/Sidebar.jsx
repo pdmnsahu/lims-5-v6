@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Building2, FlaskConical,
   FileCheck, LogOut, ChevronRight,
-  Beaker, Shield, Layers, Thermometer, CheckSquare
+  Beaker, Shield, Layers, Thermometer, CheckSquare, Settings
 } from 'lucide-react';
 
 const roleNav = {
@@ -14,6 +14,7 @@ const roleNav = {
     { to: '/samples',    icon: Layers,          label: 'All Samples'  },
     { to: '/all-tests',  icon: FileCheck,       label: 'All Tests'    },
     { to: '/audit',      icon: Shield,          label: 'Audit Trail'  },
+    { to: '/settings',   icon: Settings,        label: 'Lab Settings' },
   ],
   admin: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },

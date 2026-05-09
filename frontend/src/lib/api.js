@@ -111,4 +111,12 @@ export const api = {
   },
   getAuditActors:  ()            => request('/audit/actors'),
   getAuditActions: ()            => request('/audit/actions'),
+
+  // Lab Settings
+  getSettings:     ()            => request('/settings'),
+  updateSettings:  (data)        => request('/settings', { method: 'PUT', body: data }),
+  uploadSettingsImage: (field, file) => {
+    const fd = new FormData(); fd.append('image', file);
+    return upload(`/settings/upload/${field}`, fd);
+  },
 };
