@@ -15,6 +15,7 @@ import uploadRoutes      from './routes/upload.js';
 import auditRoutes       from './routes/audit.js';
 import ambientRoutes     from './routes/ambient.js';
 import settingsRoutes    from './routes/settings.js';
+import { warmUpBrowser } from './lib/pdfGenerator.js';
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -28,7 +29,7 @@ app.use('/api/clients',          clientRoutes);
 app.use('/api/sample-groups',    sampleGroupRoutes);
 app.use('/api/samples',          sampleRoutes);
 app.use('/api/tests',            testRoutes);
-app.use('/api/test-definitions', testDefRoutes);   // kept for read-only (bulk assign dropdown)
+app.use('/api/test-definitions', testDefRoutes);
 app.use('/api/reports',          reportRoutes);
 app.use('/api/bulk-assign',      bulkAssignRoutes);
 app.use('/api/upload',           uploadRoutes);
@@ -43,4 +44,8 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => console.log(`🚀 CoalLIMS API v3 → http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 CoalLIMS API v3 → http://localhost:${PORT}`);
+  // Warm up Chromium in the background so the first PDF request is fast
+  warmUpBrowser();
+});
