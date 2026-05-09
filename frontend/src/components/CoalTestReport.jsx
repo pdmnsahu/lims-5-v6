@@ -208,7 +208,26 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
         </button>
       </div>
 
-      <div ref={reportRef} style={styles.page}>
+      <div
+        ref={reportRef}
+        style={{
+          ...styles.page,
+          position: 'relative',
+          overflow: 'hidden',
+          background: '#fff',
+        }}
+      >
+
+        {/* FIXED PRINT LAYER */}
+
+        <div
+          style={{
+            position: 'absolute',
+            left: '8mm',
+            top: '6mm',
+            width: '194mm',
+          }}
+        >
         <div
           style={{
             display: 'grid',
@@ -748,6 +767,7 @@ export default function CoalTestReport({ sample = {}, tests = [] }) {
             </div>
           </div>
         </div>
+              </div>
       </div>
     </div>
   );
