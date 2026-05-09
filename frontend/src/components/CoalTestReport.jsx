@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function dd(d) {
@@ -43,7 +43,46 @@ export default function CoalTestReport({ sample, tests, onClose }) {
     reader.readAsDataURL(file);
   };
 
-  const handlePrint = () => window.print();
+  const [downloading, setDownloading] = useState(false);
+
+  // Load html2pdf.js once from CDN
+  useEffect(() => {
+    if (window.html2pdf) return;
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.async = true;
+    document.head.appendChild(script);
+  }, []);
+
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current) return;
+    setDownloading(true);
+    try {
+      // Wait for html2pdf to be available
+      await new Promise((resolve) => {
+        if (window.html2pdf) return resolve();
+        const interval = setInterval(() => {
+          if (window.html2pdf) { clearInterval(interval); resolve(); }
+        }, 100);
+      });
+
+      const filename = `CoalTestReport_${sample.lab_internal_id || sample.sample_ref_id || 'report'}.pdf`;
+      await window.html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(reportRef.current)
+        .save();
+    } catch (e) {
+      alert('PDF download failed: ' + e.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // ── Pull values from actual tests ──────────────────────────────────────────
   const tTM  = byName(tests, 'Total Moisture (TM)');
@@ -342,21 +381,6 @@ export default function CoalTestReport({ sample, tests, onClose }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', fontFamily: "'Segoe UI', sans-serif" }}>
 
-      {/* Print styles — only report-content is visible when printing */}
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #report-content, #report-content * { visibility: visible !important; }
-          #report-content {
-            position: fixed !important;
-            left: 0; top: 0;
-            width: 100% !important;
-            border: none !important;
-            margin: 0 !important;
-            padding: 18px 22px 14px 22px !important;
-          }
-        }
-      `}</style>
 
       {/* ── LEFT PANEL ── */}
       <div style={{ width: 300, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -422,11 +446,12 @@ export default function CoalTestReport({ sample, tests, onClose }) {
 
         {/* Buttons */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button onClick={handlePrint} style={{
-            width: '100%', padding: '12px 0', background: '#0f172a', color: '#fff',
-            border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer',
+          <button onClick={handleDownloadPdf} disabled={downloading} style={{
+            width: '100%', padding: '12px 0', background: downloading ? '#475569' : '#0f172a', color: '#fff',
+            border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: downloading ? 'not-allowed' : 'pointer',
+            opacity: downloading ? 0.8 : 1,
           }}>
-            🖨️ Print / Save as PDF
+            {downloading ? '⏳ Generating PDF…' : '⬇️ Download PDF'}
           </button>
           <button onClick={onClose} style={{
             width: '100%', padding: '10px 0', background: '#fff', color: '#64748b',
@@ -435,7 +460,7 @@ export default function CoalTestReport({ sample, tests, onClose }) {
             ← Back to Reports
           </button>
           <div style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8' }}>
-            Use browser's "Save as PDF" in print dialog
+            PDF will be downloaded automatically
           </div>
         </div>
       </div>
