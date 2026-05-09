@@ -97,6 +97,23 @@ export const api = {
   getSampleReport: (sampleId)    => request(`/reports/sample/${sampleId}`),
   getGroupReport:  (id)          => request(`/reports/group/${id}`),
   getOverview:     ()            => request('/reports/overview'),
+  downloadSamplePDF: async (sampleId, filename) => {
+    const token = getToken();
+    const res = await fetch(`${BASE}/reports/sample/${sampleId}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'PDF failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename || 'TestReport.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   // Ambient readings
   getAmbientReadings: (limit)    => request(`/ambient${limit ? `?limit=${limit}` : ''}`),

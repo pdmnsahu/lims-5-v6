@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Badge, Empty, Table, PageSpinner } from '../components/shared/UI';
 import { FileText, FileDown, Loader2 } from 'lucide-react';
-import CoalTestReport from '../components/CoalTestReport';
+
 function groupBySample(tests) {
   const map = new Map();
   tests.forEach(t => {
@@ -23,15 +23,13 @@ function groupBySample(tests) {
 }
 
 export default function ReportsPage() {
-  const [tests,      setTests]      = useState([]);
-  const [groups,     setGroups]     = useState([]);
-  const [sampleMeta, setSampleMeta] = useState({});
-  const [loading,    setLoading]    = useState(true);
-  const [view,       setView]       = useState('samples');
-
-  // Report viewer state
-  const [reportData, setReportData] = useState(null); // { sample, tests }
-  const [loadingReport, setLoadingReport] = useState({});
+  const [tests,         setTests]        = useState([]);
+  const [groups,        setGroups]       = useState([]);
+  const [sampleMeta,    setSampleMeta]   = useState({});
+  const [loading,       setLoading]      = useState(true);
+  const [dlLoading,     setDlLoading]    = useState({});
+  const [dlGrpLoading,  setDlGrpLoading] = useState({});
+  const [view,          setView]         = useState('samples');
 
   useEffect(() => {
     Promise.all([api.getTests(), api.getSampleGroups(), api.getSamples()])
@@ -48,90 +46,47 @@ export default function ReportsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const openReport = async (sampleId) => {
-    setLoadingReport(p => ({ ...p, [sampleId]: true }));
+  // ── Per-sample PDF — Puppeteer backend ────────────────────────────────────
+  const handleDownloadSample = async (sampleId, labId, refId) => {
+    setDlLoading(p => ({ ...p, [sampleId]: true }));
     try {
-      const data = await api.getSampleReport(sampleId);
-      if (!data.tests.length) return alert('No approved tests for this sample yet.');
-      setReportData(data);
+      const filename = `TestReport_${labId || refId || sampleId}.pdf`;
+      await api.downloadSamplePDF(sampleId, filename);
     } catch (e) { alert(e.message); }
-    finally { setLoadingReport(p => ({ ...p, [sampleId]: false })); }
+    finally { setDlLoading(p => ({ ...p, [sampleId]: false })); }
   };
 
-  const downloadGroup = async (groupId, setDl) => {
-    setDl(p => ({ ...p, [groupId]: true }));
+  // ── Group PDF — simple HTML in new tab ───────────────────────────────────
+  const handleDownloadGroup = async (groupId) => {
+    setDlGrpLoading(p => ({ ...p, [groupId]: true }));
     try {
       const { group, tests } = await api.getGroupReport(groupId);
       if (!tests.length) return alert('No approved tests in this group yet.');
-
-      // Load html2pdf.js from CDN if not already loaded
-      if (!window.html2pdf) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-          script.onload = resolve;
-          script.onerror = () => reject(new Error('Failed to load PDF library'));
-          document.head.appendChild(script);
-        });
-      }
-
-      // Build the report HTML in a hidden off-screen element
       const rows = tests.map(t =>
-        `<tr><td>${t.sample_ref_id}</td><td>${t.lab_internal_id||'—'}</td><td>${t.test_name}</td><td>${t.result_value}</td><td>${t.test_unit||'—'}</td><td>${t.chemist_name||'—'}</td></tr>`
+        `<tr><td>${t.sample_ref_id}</td><td>${t.lab_internal_id||'—'}</td><td>${t.test_name}</td>` +
+        `<td style="text-align:center">${t.result_value}</td><td>${t.test_unit||'—'}</td><td>${t.chemist_name||'—'}</td></tr>`
       ).join('');
-
-      const container = document.createElement('div');
-      container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:serif;font-size:12px;padding:30px;';
-      container.innerHTML = `
-        <h2 style="margin-bottom:4px;font-size:16px;">Group Analysis Report — ${group.group_ref_id}</h2>
-        <p style="margin:2px 0 16px;color:#555;font-size:13px;">Client: ${group.client_name} &nbsp;|&nbsp; Contact: ${group.contact_person||'—'}</p>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead><tr style="background:#f0f0f0;">
-            <th style="border:1px solid #000;padding:6px 10px;text-align:left;">Sample Ref</th>
-            <th style="border:1px solid #000;padding:6px 10px;text-align:left;">Lab ID</th>
-            <th style="border:1px solid #000;padding:6px 10px;text-align:left;">Parameter</th>
-            <th style="border:1px solid #000;padding:6px 10px;text-align:left;">Result</th>
-            <th style="border:1px solid #000;padding:6px 10px;text-align:left;">Unit</th>
-            <th style="border:1px solid #000;padding:6px 10px;text-align:left;">Analyst</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <p style="margin-top:20px;font-size:11px;color:#888;">Generated by CoalLIMS · ${new Date().toLocaleDateString()}</p>
-      `;
-      document.body.appendChild(container);
-
-      const filename = `GroupReport_${group.group_ref_id}.pdf`;
-      await window.html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        })
-        .from(container)
-        .save();
-
-      document.body.removeChild(container);
+      const html = `<!DOCTYPE html><html><head><title>Group Report ${group.group_ref_id}</title>
+        <style>body{font-family:'Times New Roman',serif;padding:28px;color:#000}
+        h2{font-size:18px;margin-bottom:4px}p{margin:2px 0 14px;color:#555;font-size:12px}
+        table{width:100%;border-collapse:collapse}th{background:#f0f0f0;padding:6px 10px;border:1px solid #000;text-align:left;font-size:11px}
+        td{border:1px solid #000;padding:5px 10px;font-size:11px}
+        @media print{button{display:none}}</style></head><body>
+        <h2>Group Analysis Report — ${group.group_ref_id}</h2>
+        <p>Client: ${group.client_name} &nbsp;|&nbsp; Contact: ${group.contact_person||'—'}</p>
+        <table><thead><tr><th>Sample Ref</th><th>Lab ID</th><th>Parameter</th><th>Result</th><th>Unit</th><th>Analyst</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <button onclick="window.print()" style="margin-top:16px;padding:10px 24px;font-size:14px;cursor:pointer;background:#111;color:#fff;border:none;border-radius:6px;">
+          🖨️ Print / Save as PDF
+        </button>
+        </body></html>`;
+      const w = window.open('', '_blank');
+      w.document.write(html); w.document.close();
     } catch (e) { alert(e.message); }
-    finally { setDl(p => ({ ...p, [groupId]: false })); }
+    finally { setDlGrpLoading(p => ({ ...p, [groupId]: false })); }
   };
 
-  const [dlGroupLoading, setDlGroupLoading] = useState({});
-
-  // If report is open, show full-screen report viewer
-  if (reportData) {
-    return (
-      <CoalTestReport
-        sample={reportData.sample}
-        tests={reportData.tests}
-        onClose={() => setReportData(null)}
-      />
-    );
-  }
-
   if (loading) return <PageSpinner />;
-
   const sampleRows = groupBySample(tests);
 
   return (
@@ -139,23 +94,23 @@ export default function ReportsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Each sample gets one report containing all its approved tests.
+          PDF reports are generated server-side — high quality, single A4 page, vector text.
         </p>
       </div>
 
       <div className="flex gap-2 border-b border-gray-100">
-        {[{ key: 'samples', label: 'By Sample' }, { key: 'groups', label: 'By Group' }].map(tab => (
+        {[{ key:'samples', label:'By Sample' }, { key:'groups', label:'By Group' }].map(tab => (
           <button key={tab.key} onClick={() => setView(tab.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              view === tab.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              view===tab.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Per-sample reports */}
+      {/* ── BY SAMPLE ── */}
       {view === 'samples' && (
-        <Table headers={['Lab Internal ID', 'Sample Ref ID', 'Group', 'Client', 'Approved Tests', 'Report']} loading={false}>
+        <Table headers={['Lab Internal ID','Sample Ref ID','Group','Client','Approved Tests','Download']} loading={false}>
           {sampleRows.length === 0
             ? <tr><td colSpan={6}><Empty message="No approved tests yet." icon={FileText} /></td></tr>
             : sampleRows.map(s => {
@@ -177,17 +132,16 @@ export default function ReportsPage() {
                   <td className="px-4 py-3">
                     {allApproved ? (
                       <button
-                        onClick={() => openReport(s.sample_db_id)}
-                        disabled={loadingReport[s.sample_db_id]}
+                        onClick={() => handleDownloadSample(s.sample_db_id, s.lab_internal_id, s.sample_ref_id)}
+                        disabled={dlLoading[s.sample_db_id]}
                         className="btn-primary py-1 px-3 text-xs">
-                        {loadingReport[s.sample_db_id]
-                          ? <Loader2 size={12} className="animate-spin" />
-                          : <FileText size={12} />}
-                        View Report
+                        {dlLoading[s.sample_db_id]
+                          ? <><Loader2 size={12} className="animate-spin"/> Generating…</>
+                          : <><FileDown size={12}/> Download PDF</>}
                       </button>
                     ) : (
-                      <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg font-medium">
-                        {meta ? `${meta.approved_count}/${meta.test_count} approved` : 'Pending'}
+                      <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg font-medium whitespace-nowrap">
+                        {meta ? `${meta.approved_count}/${meta.test_count} approved` : 'Pending tests'}
                       </span>
                     )}
                   </td>
@@ -197,9 +151,9 @@ export default function ReportsPage() {
         </Table>
       )}
 
-      {/* Group reports */}
+      {/* ── BY GROUP ── */}
       {view === 'groups' && (
-        <Table headers={['Group Ref ID', 'Client', 'Samples', 'Status', 'Download']} loading={false}>
+        <Table headers={['Group Ref ID','Client','Samples','Status','Download']} loading={false}>
           {groups.length === 0
             ? <tr><td colSpan={5}><Empty message="No groups available." icon={FileText} /></td></tr>
             : groups.map(g => (
@@ -209,10 +163,10 @@ export default function ReportsPage() {
                 <td className="px-4 py-3 text-sm text-gray-500">{g.sample_count} sample(s)</td>
                 <td className="px-4 py-3"><Badge status={g.status} /></td>
                 <td className="px-4 py-3">
-                  <button onClick={() => downloadGroup(g.id, setDlGroupLoading)}
-                    disabled={dlGroupLoading[g.id]} className="btn-primary py-1 px-3 text-xs">
-                    {dlGroupLoading[g.id] ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
-                    Download PDF
+                  <button onClick={() => handleDownloadGroup(g.id)}
+                    disabled={dlGrpLoading[g.id]} className="btn-primary py-1 px-3 text-xs">
+                    {dlGrpLoading[g.id] ? <Loader2 size={12} className="animate-spin"/> : <FileDown size={12}/>}
+                    {dlGrpLoading[g.id] ? ' Loading…' : ' Download'}
                   </button>
                 </td>
               </tr>
