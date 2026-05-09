@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Badge, Empty, Table, PageSpinner } from '../shared/UI';
+import { api } from '../lib/api';
+import { Badge, Empty, Table, PageSpinner } from '../components/shared/UI';
 import { FileText, FileDown, Loader2 } from 'lucide-react';
 import { downloadSampleReport } from '../components/CoalTestReport';
 
