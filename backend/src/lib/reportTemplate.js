@@ -1,7 +1,7 @@
 // reportTemplate.js
 // Builds a self-contained HTML string that Puppeteer renders into a pixel-perfect A4 PDF.
 // All dimensions are in mm to match A4 (210mm × 297mm) exactly.
- 
+
 function dd(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -231,25 +231,30 @@ export function buildReportHTML({ sample, tests, settings = {} }) {
     <table>
       <tbody>
         <tr>
-          <td colspan="2" class="report-title">TEST REPORT</td>
+          <td colspan="5" class="report-title">TEST REPORT</td>
         </tr>
         <tr>
-          <td colspan="2" class="report-no">${esc(rptNo)}</td>
+          <td colspan="5" class="report-no">${esc(rptNo)}</td>
         </tr>
-        <!-- Discipline | Chemical — bold, centred, NO vertical divider between them -->
         <tr>
-          <td style="font-weight:bold;font-size:9pt;text-align:center;padding:2mm 2mm;border-right:none;border-bottom:0.3mm solid #000;">Discipline</td>
-          <td style="font-size:9pt;text-align:center;padding:2mm 2mm;border-left:none;border-bottom:0.3mm solid #000;font-weight:bold;">Chemical</td>
+          <td class="meta-label">Discipline</td>
+          <td class="meta-subvalue">Chemical</td>
+          <td class="meta-label">Group</td>
+          <td colspan="2" class="meta-subvalue">Solid Fuels</td>
         </tr>
-        <!-- Test Report No | Report date — small grey labels -->
         <tr>
-          <td style="font-size:7pt;color:#555;padding:0.8mm 2mm 0 2mm;border-right:0.3mm solid #000;border-bottom:none;">Test Report No</td>
-          <td style="font-size:7pt;color:#555;padding:0.8mm 2mm 0 2mm;border-left:0.3mm solid #000;border-bottom:none;">Report date</td>
+          <td style="font-size:7.5pt;color:#555;">Test Report No</td>
+          <td style="font-size:7.5pt;color:#555;">Report date</td>
+          <td style="font-size:7.5pt;color:#555;">Customer PO</td>
+          <td style="font-size:7.5pt;color:#555;">Date</td>
+          <td style="font-size:7.5pt;color:#555;">Text Pages</td>
         </tr>
-        <!-- Values — large bold -->
         <tr>
-          <td style="font-weight:bold;font-size:11pt;padding:0 2mm 1.5mm 2mm;border-right:0.3mm solid #000;border-top:none;">${esc(rptNo)}</td>
-          <td style="font-weight:bold;font-size:11pt;padding:0 2mm 1.5mm 2mm;border-left:0.3mm solid #000;border-top:none;">${esc(rptDate)}</td>
+          <td class="meta-value">${esc(rptNo)}</td>
+          <td class="meta-value">${esc(rptDate)}</td>
+          <td class="meta-subvalue">${esc(sample.group_ref_id || '—')}</td>
+          <td class="meta-subvalue">${esc(dd(sample.group_created_at))}</td>
+          <td class="meta-subvalue">1</td>
         </tr>
       </tbody>
     </table>
