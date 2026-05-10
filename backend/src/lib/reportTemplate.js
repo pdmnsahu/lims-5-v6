@@ -1,7 +1,7 @@
 // reportTemplate.js
 // Builds a self-contained HTML string that Puppeteer renders into a pixel-perfect A4 PDF.
 // All dimensions are in mm to match A4 (210mm × 297mm) exactly.
-
+ 
 function dd(d) {
   if (!d) return '—';
   const dt = new Date(d);
