@@ -1,8 +1,4 @@
 // pdfGenerator.js
-// Fixes:
-//   1. Slow generation — browser warms up at server start, reused across requests
-//   2. Lagging PDF in Chrome — Parr image resized to max 800px wide before embedding
-//   3. Timeout — all images fetched server-side as base64, zero Puppeteer network requests
 
 import https from 'https';
 import http  from 'http';
@@ -12,18 +8,28 @@ let browserInstance  = null;
 let browserLaunching = false;
 let launchQueue      = [];
 
-// ── Image fetch ────────────────────────────────────────────────────────────────
-async function fetchBuffer(url) {
+// ── Cloudinary on-the-fly resize ──────────────────────────────────────────────
+// f_auto  → Cloudinary picks the best format (keeps PNG as PNG, JPEG as JPEG)
+// c_limit → only downscales, never upscales
+function cloudinaryResized(url, width, quality) {
+  if (!url) return '';
+  if (!url.includes('cloudinary.com')) return url;
+  return url.replace('/upload/', `/upload/w_${width},q_${quality},f_auto,c_limit/`);
+}
+
+// ── Fetch with redirect support ────────────────────────────────────────────────
+async function fetchBuffer(url, redirects = 3) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
     const req = client.get(url, { timeout: 12000 }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        // Follow one redirect
-        return fetchBuffer(res.headers.location).then(resolve).catch(reject);
+      if ([301,302,307,308].includes(res.statusCode) && res.headers.location && redirects > 0) {
+        return fetchBuffer(res.headers.location, redirects - 1).then(resolve).catch(reject);
       }
+      // Read content-type from actual response headers — not the URL
+      const contentType = res.headers['content-type'] || 'image/jpeg';
       const chunks = [];
       res.on('data', c => chunks.push(c));
-      res.on('end',  () => resolve(Buffer.concat(chunks)));
+      res.on('end',  () => resolve({ buf: Buffer.concat(chunks), contentType }));
       res.on('error', reject);
     });
     req.on('error', reject);
@@ -31,95 +37,77 @@ async function fetchBuffer(url) {
   });
 }
 
-// Convert URL to base64 data URI, with optional JPEG recompression for large images
-async function toDataURI(url, maxWidth = 0) {
+// ── URL → base64 data URI ─────────────────────────────────────────────────────
+// MIME type is read from the actual HTTP response Content-Type header,
+// not guessed from the URL extension — works correctly for all formats.
+async function toDataURI(url) {
   if (!url) return '';
   try {
-    let buf = await fetchBuffer(url);
-
-    // Resize large images using sharp (if installed) to keep PDF small and fast
-    // Parr image: maxWidth=800, logos: no resize needed
-    if (maxWidth > 0) {
-      try {
-        const sharp = (await import('sharp')).default;
-        const meta  = await sharp(buf).metadata();
-        if (meta.width > maxWidth) {
-          buf = await sharp(buf)
-            .resize(maxWidth, null, { withoutEnlargement: true })
-            .jpeg({ quality: 85, mozjpeg: true })
-            .toBuffer();
-        }
-      } catch {
-        // sharp not installed — use original buffer
-      }
-    }
-
-    const mime = url.match(/\.png(\?|$)/i) ? 'image/png'
-               : url.match(/\.gif(\?|$)/i) ? 'image/gif'
-               : url.match(/\.webp(\?|$)/i)? 'image/webp'
-               : 'image/jpeg';
+    const { buf, contentType } = await fetchBuffer(url);
+    // Strip charset or extra params e.g. "image/png; charset=utf-8" → "image/png"
+    const mime = contentType.split(';')[0].trim() || 'image/jpeg';
     return `data:${mime};base64,${buf.toString('base64')}`;
   } catch (err) {
-    console.warn(`[pdf] Could not inline ${url}: ${err.message}`);
+    console.warn(`[pdf] Could not inline image: ${err.message}`);
     return '';
   }
 }
 
-// Fetch all report images in parallel
+// ── Inline all report images in parallel ──────────────────────────────────────
 async function inlineImages({ tests, settings }) {
   const gcvTest = tests.find(t => t.test_name === 'Gross Calorific Value');
 
   const [logo, acc, stamp, sig, parr] = await Promise.all([
-    toDataURI(settings.logo_url          || ''),        // no resize — small logo
-    toDataURI(settings.accreditation_url || ''),        // no resize — small badge
-    toDataURI(settings.stamp_url         || ''),        // no resize — small stamp
-    toDataURI(settings.signature_url     || ''),        // no resize — small sig
-    toDataURI(gcvTest?.image_url         || '', 900),   // resize to max 900px — fixes lag
+    toDataURI(cloudinaryResized(settings.logo_url,          300, 85)), // logo — keep crisp
+    toDataURI(cloudinaryResized(settings.accreditation_url, 300, 85)), // badge — keep crisp
+    toDataURI(cloudinaryResized(settings.stamp_url,         300, 85)), // stamp — keep crisp
+    toDataURI(cloudinaryResized(settings.signature_url,     400, 85)), // sig — slightly wider
+    toDataURI(cloudinaryResized(gcvTest?.image_url,         800, 70)), // Parr — compress most
   ]);
 
   return {
-    inlinedSettings: { ...settings, logo_url: logo, accreditation_url: acc, stamp_url: stamp, signature_url: sig },
-    inlinedTests:    tests.map(t => t.test_name === 'Gross Calorific Value' ? { ...t, image_url: parr } : t),
+    inlinedSettings: {
+      ...settings,
+      logo_url:          logo,
+      accreditation_url: acc,
+      stamp_url:         stamp,
+      signature_url:     sig,
+    },
+    inlinedTests: tests.map(t =>
+      t.test_name === 'Gross Calorific Value' ? { ...t, image_url: parr } : t
+    ),
   };
 }
 
-// ── Browser singleton ──────────────────────────────────────────────────────────
+// ── Browser singleton with warm-up ────────────────────────────────────────────
 async function getBrowser() {
-  // Return existing healthy instance
   if (browserInstance) {
     try { await browserInstance.version(); return browserInstance; }
     catch { browserInstance = null; }
   }
-
-  // Queue concurrent launch requests
   if (browserLaunching) {
     return new Promise((resolve, reject) => launchQueue.push({ resolve, reject }));
   }
   browserLaunching = true;
-
   try {
     let puppeteer;
     try {
-      // Production (Render): puppeteer-core + @sparticuz/chromium
-      const chromium   = await import('@sparticuz/chromium');
-      puppeteer        = (await import('puppeteer-core')).default;
-      const execPath   = await chromium.default.executablePath();
-      browserInstance  = await puppeteer.launch({
+      const chromium  = await import('@sparticuz/chromium');
+      puppeteer       = (await import('puppeteer-core')).default;
+      const execPath  = await chromium.default.executablePath();
+      browserInstance = await puppeteer.launch({
         args:            [...chromium.default.args, '--disable-web-security'],
         defaultViewport: chromium.default.defaultViewport,
         executablePath:  execPath,
         headless:        chromium.default.headless,
       });
     } catch {
-      // Local dev: full puppeteer
       puppeteer       = (await import('puppeteer')).default;
       browserInstance = await puppeteer.launch({
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       });
     }
-
-    // Drain queue
     launchQueue.forEach(({ resolve }) => resolve(browserInstance));
     return browserInstance;
   } catch (err) {
@@ -131,22 +119,19 @@ async function getBrowser() {
   }
 }
 
-// ── Warm up — call this at server start ───────────────────────────────────────
 export async function warmUpBrowser() {
   try {
     console.log('[pdf] Warming up Chromium...');
     await getBrowser();
     console.log('[pdf] Chromium ready');
   } catch (err) {
-    console.warn('[pdf] Chromium warm-up failed (PDF generation will be slower):', err.message);
+    console.warn('[pdf] Chromium warm-up failed:', err.message);
   }
 }
 
-// ── Main export ────────────────────────────────────────────────────────────────
 export async function generateReportPDF({ sample, tests, settings }) {
   const { inlinedSettings, inlinedTests } = await inlineImages({ tests, settings });
-  const html = buildReportHTML({ sample, tests: inlinedTests, settings: inlinedSettings });
-
+  const html    = buildReportHTML({ sample, tests: inlinedTests, settings: inlinedSettings });
   const browser = await getBrowser();
   const page    = await browser.newPage();
   try {
