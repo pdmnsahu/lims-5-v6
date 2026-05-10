@@ -53,7 +53,7 @@ export function buildReportHTML({ sample, tests, settings = {} }) {
 
   // Lab info
   const labName    = settings.lab_name    || 'Ravi Energie Laboratory';
-  const labAddress = settings.lab_address || 'Plot No14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharastra, India.';
+  const labAddress = settings.lab_address || 'Plot No14, Astankar Bhavan, Behind Tukaram Sabhagruha, Suyog Nagar, District Nagpur - 440015, Maharastra, India.';
   const labPhone   = settings.lab_phone   || '+91 8320021741';
   const labEmail   = settings.lab_email   || 'lab@ravienergie.com';
   const labWebsite = settings.lab_website || 'www.ravienergie.com';

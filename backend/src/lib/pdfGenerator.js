@@ -62,7 +62,7 @@ async function inlineImages({ tests, settings }) {
     toDataURI(cloudinaryResized(settings.accreditation_url, 300, 85)), // badge — keep crisp
     toDataURI(cloudinaryResized(settings.stamp_url,         300, 85)), // stamp — keep crisp
     toDataURI(cloudinaryResized(settings.signature_url,     400, 85)), // sig — slightly wider
-    toDataURI(cloudinaryResized(gcvTest?.image_url,         800, 70)), // Parr — compress most
+    toDataURI(cloudinaryResized(gcvTest?.image_url,         800, 85)), // Parr — compress most
   ]);
 
   return {
