@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Badge, Empty, Table, PageSpinner } from '../components/shared/UI';
-import { FileDown, FileText, Loader2 } from 'lucide-react';
+import { FileText, FileDown, Loader2 } from 'lucide-react';
 
 function groupBySample(tests) {
   const map = new Map();
@@ -23,13 +23,13 @@ function groupBySample(tests) {
 }
 
 export default function ReportsPage() {
-  const [tests,        setTests]       = useState([]);
-  const [groups,       setGroups]      = useState([]);
-  const [sampleMeta,   setSampleMeta]  = useState({});
-  const [loading,      setLoading]     = useState(true);
-  const [dlLoading,    setDlLoading]   = useState({});
-  const [dlGrpLoading, setDlGrpLoading]= useState({});
-  const [view,         setView]        = useState('samples');
+  const [tests,         setTests]        = useState([]);
+  const [groups,        setGroups]       = useState([]);
+  const [sampleMeta,    setSampleMeta]   = useState({});
+  const [loading,       setLoading]      = useState(true);
+  const [dlLoading,     setDlLoading]    = useState({});
+  const [dlGrpLoading,  setDlGrpLoading] = useState({});
+  const [view,          setView]         = useState('samples');
 
   useEffect(() => {
     Promise.all([api.getTests(), api.getSampleGroups(), api.getSamples()])
@@ -46,36 +46,39 @@ export default function ReportsPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  // ── Per-sample PDF — Puppeteer backend ────────────────────────────────────
   const handleDownloadSample = async (sampleId, labId, refId) => {
     setDlLoading(p => ({ ...p, [sampleId]: true }));
     try {
-      await api.downloadSamplePDF(sampleId, `TestReport_${labId || refId || sampleId}.pdf`);
+      const filename = `TestReport_${labId || refId || sampleId}.pdf`;
+      await api.downloadSamplePDF(sampleId, filename);
     } catch (e) { alert(e.message); }
     finally { setDlLoading(p => ({ ...p, [sampleId]: false })); }
   };
 
+  // ── Group PDF — simple HTML in new tab ───────────────────────────────────
   const handleDownloadGroup = async (groupId) => {
     setDlGrpLoading(p => ({ ...p, [groupId]: true }));
     try {
       const { group, tests } = await api.getGroupReport(groupId);
       if (!tests.length) return alert('No approved tests in this group yet.');
       const rows = tests.map(t =>
-        `<tr><td>${t.sample_ref_id}</td><td>${t.lab_internal_id||'—'}</td>` +
-        `<td>${t.test_name}</td><td style="text-align:center">${t.result_value}</td>` +
-        `<td>${t.test_unit||'—'}</td><td>${t.chemist_name||'—'}</td></tr>`
+        `<tr><td>${t.sample_ref_id}</td><td>${t.lab_internal_id||'—'}</td><td>${t.test_name}</td>` +
+        `<td style="text-align:center">${t.result_value}</td><td>${t.test_unit||'—'}</td><td>${t.chemist_name||'—'}</td></tr>`
       ).join('');
       const html = `<!DOCTYPE html><html><head><title>Group Report ${group.group_ref_id}</title>
-        <style>body{font-family:'Times New Roman',serif;padding:28px}h2{font-size:18px;margin-bottom:4px}
-        p{margin:2px 0 14px;color:#555;font-size:12px}table{width:100%;border-collapse:collapse}
-        th{background:#f0f0f0;padding:6px 10px;border:1px solid #000;font-size:11px;text-align:left}
-        td{border:1px solid #000;padding:5px 10px;font-size:11px}@media print{button{display:none}}</style>
-        </head><body>
+        <style>body{font-family:'Times New Roman',serif;padding:28px;color:#000}
+        h2{font-size:18px;margin-bottom:4px}p{margin:2px 0 14px;color:#555;font-size:12px}
+        table{width:100%;border-collapse:collapse}th{background:#f0f0f0;padding:6px 10px;border:1px solid #000;text-align:left;font-size:11px}
+        td{border:1px solid #000;padding:5px 10px;font-size:11px}
+        @media print{button{display:none}}</style></head><body>
         <h2>Group Analysis Report — ${group.group_ref_id}</h2>
-        <p>Client: ${group.client_name} | Contact: ${group.contact_person||'—'}</p>
+        <p>Client: ${group.client_name} &nbsp;|&nbsp; Contact: ${group.contact_person||'—'}</p>
         <table><thead><tr><th>Sample Ref</th><th>Lab ID</th><th>Parameter</th><th>Result</th><th>Unit</th><th>Analyst</th></tr></thead>
         <tbody>${rows}</tbody></table>
         <button onclick="window.print()" style="margin-top:16px;padding:10px 24px;font-size:14px;cursor:pointer;background:#111;color:#fff;border:none;border-radius:6px;">
-          🖨️ Print / Save as PDF</button>
+          🖨️ Print / Save as PDF
+        </button>
         </body></html>`;
       const w = window.open('', '_blank');
       w.document.write(html); w.document.close();
@@ -91,7 +94,7 @@ export default function ReportsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          PDFs are generated instantly on the server — no browser rendering needed.
+          PDF reports are generated server-side — high quality, single A4 page, vector text.
         </p>
       </div>
 
@@ -105,6 +108,7 @@ export default function ReportsPage() {
         ))}
       </div>
 
+      {/* ── BY SAMPLE ── */}
       {view === 'samples' && (
         <Table headers={['Lab Internal ID','Sample Ref ID','Group','Client','Approved Tests','Download']} loading={false}>
           {sampleRows.length === 0
@@ -147,6 +151,7 @@ export default function ReportsPage() {
         </Table>
       )}
 
+      {/* ── BY GROUP ── */}
       {view === 'groups' && (
         <Table headers={['Group Ref ID','Client','Samples','Status','Download']} loading={false}>
           {groups.length === 0
@@ -160,7 +165,8 @@ export default function ReportsPage() {
                 <td className="px-4 py-3">
                   <button onClick={() => handleDownloadGroup(g.id)}
                     disabled={dlGrpLoading[g.id]} className="btn-primary py-1 px-3 text-xs">
-                    {dlGrpLoading[g.id] ? <><Loader2 size={12} className="animate-spin"/> Loading…</> : <><FileDown size={12}/> Download</>}
+                    {dlGrpLoading[g.id] ? <Loader2 size={12} className="animate-spin"/> : <FileDown size={12}/>}
+                    {dlGrpLoading[g.id] ? ' Loading…' : ' Download'}
                   </button>
                 </td>
               </tr>
