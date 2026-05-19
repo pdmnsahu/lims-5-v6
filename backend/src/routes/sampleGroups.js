@@ -6,7 +6,6 @@ import { logAction, getIP } from '../lib/audit.js';
 const router = Router();
 router.use(authenticate);
 
-// GET /api/sample-groups
 router.get('/', async (req, res) => {
   try {
     const groups = await sql`
@@ -20,13 +19,9 @@ router.get('/', async (req, res) => {
       ORDER BY sg.created_at DESC
     `;
     res.json(groups);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-// GET /api/sample-groups/:id
 router.get('/:id', async (req, res) => {
   try {
     const [group] = await sql`
@@ -69,14 +64,11 @@ router.get('/:id', async (req, res) => {
     `;
 
     res.json({ ...group, samples });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-// POST /api/sample-groups — admin creates
-router.post('/', authorize('admin'), async (req, res) => {
+// POST — receptionist creates groups
+router.post('/', authorize('receptionist'), async (req, res) => {
   try {
     const { group_ref_id, client_id, samples } = req.body;
     if (!group_ref_id || !client_id || !samples?.length)
@@ -110,37 +102,30 @@ router.post('/', authorize('admin'), async (req, res) => {
   } catch (err) {
     if (err.message?.includes('unique'))
       return res.status(409).json({ error: 'Group ID already exists, or a sample ID is already registered in this group' });
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(err); res.status(500).json({ error: 'Server error' });
   }
 });
 
-// PATCH /api/sample-groups/:id — super_admin or admin (collected owner)
-// Editable: group_ref_id (no submitted tests), client_id (no approved tests)
-router.patch('/:id', authorize('super_admin', 'admin'), async (req, res) => {
+// PATCH — admin or receptionist
+router.patch('/:id', authorize('admin', 'receptionist'), async (req, res) => {
   try {
     const { group_ref_id, client_id } = req.body;
-
     const [group] = await sql`SELECT * FROM sample_groups WHERE id = ${req.params.id}`;
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    // Admin can only edit groups they collected
-    if (req.user.role === 'admin' && group.collected_by !== req.user.id)
+    if (req.user.role === 'receptionist' && group.collected_by !== req.user.id)
       return res.status(403).json({ error: 'You can only edit groups you registered' });
 
-    // group_ref_id: block if any test has been submitted
     if (group_ref_id && group_ref_id !== group.group_ref_id) {
       const [{ count }] = await sql`
         SELECT COUNT(*)::int AS count FROM sample_tests st
         JOIN samples s ON s.id = st.sample_id
-        WHERE s.sample_group_id = ${req.params.id}
-          AND st.status IN ('submitted','approved')
+        WHERE s.sample_group_id = ${req.params.id} AND st.status IN ('submitted','approved')
       `;
       if (count > 0)
-        return res.status(409).json({ error: 'Cannot change Group ID — tests have already been submitted or approved' });
+        return res.status(409).json({ error: 'Cannot change Group ID — tests already submitted or approved' });
     }
 
-    // client_id: block if any test has been approved
     if (client_id && client_id !== group.client_id) {
       const [{ count }] = await sql`
         SELECT COUNT(*)::int AS count FROM sample_tests st
@@ -148,7 +133,7 @@ router.patch('/:id', authorize('super_admin', 'admin'), async (req, res) => {
         WHERE s.sample_group_id = ${req.params.id} AND st.status = 'approved'
       `;
       if (count > 0)
-        return res.status(409).json({ error: 'Cannot change Client — some tests are already approved and will appear on reports' });
+        return res.status(409).json({ error: 'Cannot change Client — some tests already approved' });
     }
 
     const [updated] = await sql`
@@ -161,52 +146,43 @@ router.patch('/:id', authorize('super_admin', 'admin'), async (req, res) => {
 
     await logAction({ user: req.user, action: 'EDIT_SAMPLE_GROUP', entityType: 'sample_group',
       entityId: updated.id, entityLabel: updated.group_ref_id,
-      detail: {
-        old_group_ref_id: group.group_ref_id, new_group_ref_id: updated.group_ref_id,
-        old_client_id:    group.client_id,    new_client_id:    updated.client_id,
-      }, ip: getIP(req) });
+      detail: { old_group_ref_id: group.group_ref_id, new_group_ref_id: updated.group_ref_id }, ip: getIP(req) });
 
     res.json(updated);
   } catch (err) {
     if (err.message?.includes('unique'))
-      return res.status(409).json({ error: 'That Group ID is already taken by another group' });
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+      return res.status(409).json({ error: 'That Group ID is already taken' });
+    console.error(err); res.status(500).json({ error: 'Server error' });
   }
 });
 
-// DELETE /api/sample-groups/:id — super_admin or admin (collected + still 'collected' status)
-router.delete('/:id', authorize('super_admin', 'admin'), async (req, res) => {
+// DELETE — admin or receptionist (only on_the_way groups with no tests)
+router.delete('/:id', authorize('admin', 'receptionist'), async (req, res) => {
   try {
     const [group] = await sql`SELECT * FROM sample_groups WHERE id = ${req.params.id}`;
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    if (req.user.role === 'admin' && group.collected_by !== req.user.id)
+    if (req.user.role === 'receptionist' && group.collected_by !== req.user.id)
       return res.status(403).json({ error: 'You can only delete groups you registered' });
 
-    if (group.status !== 'collected')
-      return res.status(409).json({ error: 'Cannot delete — group is already in progress. Contact super admin.' });
+    if (group.status !== 'on_the_way')
+      return res.status(409).json({ error: 'Cannot delete — group already in progress. Contact admin.' });
 
-    // Extra safety: no tests at all
     const [{ count }] = await sql`
       SELECT COUNT(*)::int AS count FROM sample_tests st
       JOIN samples s ON s.id = st.sample_id
       WHERE s.sample_group_id = ${req.params.id}
     `;
     if (count > 0)
-      return res.status(409).json({ error: 'Cannot delete — tests have already been assigned. Contact super admin.' });
+      return res.status(409).json({ error: 'Cannot delete — tests already assigned. Contact admin.' });
 
     await sql`DELETE FROM sample_groups WHERE id = ${req.params.id}`;
 
     await logAction({ user: req.user, action: 'DELETE_SAMPLE_GROUP', entityType: 'sample_group',
-      entityId: req.params.id, entityLabel: group.group_ref_id,
-      detail: { sample_count: group.sample_count }, ip: getIP(req) });
+      entityId: req.params.id, entityLabel: group.group_ref_id, ip: getIP(req) });
 
     res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
 export default router;

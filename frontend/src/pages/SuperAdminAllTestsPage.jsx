@@ -41,7 +41,7 @@ export default function SuperAdminAllTestsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">All Tests</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Complete view of every test. Only super admin can revoke approvals.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Complete view of every test. Only admin can revoke approvals.</p>
       </div>
 
       <div className="flex gap-2 border-b border-gray-100">

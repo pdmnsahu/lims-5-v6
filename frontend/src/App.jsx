@@ -7,6 +7,7 @@ import UsersPage from './pages/UsersPage';
 import ClientsPage from './pages/ClientsPage';
 import SampleGroupDetailPage from './pages/SampleGroupDetailPage';
 import SamplesPage from './pages/SamplesPage';
+import RegisterGroupPage from './pages/RegisterGroupPage';
 import SampleApprovalPage from './pages/SampleApprovalPage';
 import MyTestsPage from './pages/MyTestsPage';
 import ReportsPage from './pages/ReportsPage';
@@ -43,25 +44,28 @@ function AppRoutes() {
         {/* All roles */}
         <Route path="dashboard" element={<DashboardPage />} />
 
-        {/* Super Admin */}
-        <Route path="users"     element={<RoleRoute roles={['super_admin']}><UsersPage /></RoleRoute>} />
-        <Route path="clients"   element={<RoleRoute roles={['super_admin']}><ClientsPage /></RoleRoute>} />
-        <Route path="all-tests" element={<RoleRoute roles={['super_admin']}><SuperAdminAllTestsPage /></RoleRoute>} />
-        <Route path="audit"     element={<RoleRoute roles={['super_admin']}><AuditPage /></RoleRoute>} />
-        <Route path="settings"  element={<RoleRoute roles={['super_admin']}><LabSettingsPage /></RoleRoute>} />
+        {/* Admin (was super_admin) */}
+        <Route path="users"     element={<RoleRoute roles={['admin']}><UsersPage /></RoleRoute>} />
+        <Route path="clients"   element={<RoleRoute roles={['admin']}><ClientsPage /></RoleRoute>} />
+        <Route path="all-tests" element={<RoleRoute roles={['admin']}><SuperAdminAllTestsPage /></RoleRoute>} />
+        <Route path="audit"     element={<RoleRoute roles={['admin']}><AuditPage /></RoleRoute>} />
+        <Route path="settings"  element={<RoleRoute roles={['admin']}><LabSettingsPage /></RoleRoute>} />
 
-        {/* Samples — unified page for super_admin, admin, lab_manager */}
-        <Route path="samples" element={<RoleRoute roles={['super_admin','admin','lab_manager']}><SamplesPage /></RoleRoute>} />
+        {/* Samples — all staff roles */}
+        <Route path="samples" element={<RoleRoute roles={['admin','receptionist','lab_manager']}><SamplesPage /></RoleRoute>} />
 
-        {/* Sample Group Detail — still its own page, linked from Samples */}
-        <Route path="sample-groups/:id" element={<RoleRoute roles={['admin','lab_manager','super_admin']}><SampleGroupDetailPage /></RoleRoute>} />
+        {/* Register Group — receptionist only, dedicated page */}
+        <Route path="register-group" element={<RoleRoute roles={['receptionist']}><RegisterGroupPage /></RoleRoute>} />
 
-        {/* Reports — admin + lab_manager */}
-        <Route path="reports" element={<RoleRoute roles={['admin','lab_manager']}><ReportsPage /></RoleRoute>} />
+        {/* Sample Group Detail */}
+        <Route path="sample-groups/:id" element={<RoleRoute roles={['receptionist','lab_manager','admin']}><SampleGroupDetailPage /></RoleRoute>} />
+
+        {/* Reports — receptionist + lab_manager */}
+        <Route path="reports" element={<RoleRoute roles={['receptionist','lab_manager']}><ReportsPage /></RoleRoute>} />
 
         {/* Lab Manager */}
-        <Route path="sample-approval" element={<RoleRoute roles={['lab_manager','super_admin']}><SampleApprovalPage /></RoleRoute>} />
-        <Route path="ambient"         element={<RoleRoute roles={['lab_manager','super_admin']}><AmbientPage /></RoleRoute>} />
+        <Route path="sample-approval" element={<RoleRoute roles={['lab_manager','admin']}><SampleApprovalPage /></RoleRoute>} />
+        <Route path="ambient"         element={<RoleRoute roles={['lab_manager','admin']}><AmbientPage /></RoleRoute>} />
 
         {/* Chemist */}
         <Route path="my-tests" element={<RoleRoute roles={['chemist']}><MyTestsPage /></RoleRoute>} />

@@ -51,12 +51,12 @@ function ActionBadge({ action }) {
 function RoleBadge({ role }) {
   if (!role) return <span className="text-gray-300 text-xs">—</span>;
   const colors = {
-    super_admin: 'bg-rose-100 text-rose-700',
+    admin: 'bg-rose-100 text-rose-700',
     admin:       'bg-orange-100 text-orange-700',
     lab_manager: 'bg-blue-100 text-blue-700',
     chemist:     'bg-teal-100 text-teal-700',
   };
-  return <span className={`badge text-xs ${colors[role] || 'bg-gray-100 text-gray-600'}`}>{role.replace('_',' ')}</span>;
+  return <span className={`badge text-xs ${colors[role] || 'bg-gray-100 text-gray-600'}`}>{role === 'receptionist' ? 'Receptionist' : role === 'lab_manager' ? 'Lab Manager' : role}</span>;
 }
 
 function DetailPopover({ detail }) {

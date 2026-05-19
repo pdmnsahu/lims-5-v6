@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 // GET /api/reports/sample/:sampleId/pdf  — Puppeteer PDF download
-router.get('/sample/:sampleId/pdf', authorize('admin', 'lab_manager', 'super_admin'), async (req, res) => {
+router.get('/sample/:sampleId/pdf', authorize('receptionist', 'lab_manager', 'admin'), async (req, res) => {
   try {
     const [sample] = await sql`
       SELECT
@@ -64,7 +64,7 @@ router.get('/sample/:sampleId/pdf', authorize('admin', 'lab_manager', 'super_adm
 
 // GET /api/reports/sample/:sampleId
 // Returns a sample with ALL its approved tests — for the "one sample, one report" PDF
-router.get('/sample/:sampleId', authorize('admin', 'lab_manager', 'super_admin'), async (req, res) => {
+router.get('/sample/:sampleId', authorize('receptionist', 'lab_manager', 'admin'), async (req, res) => {
   try {
     const [sample] = await sql`
       SELECT
@@ -111,7 +111,7 @@ router.get('/sample/:sampleId', authorize('admin', 'lab_manager', 'super_admin')
 });
 
 // GET /api/reports/group/:id — all samples + their approved tests
-router.get('/group/:id', authorize('admin', 'lab_manager', 'super_admin'), async (req, res) => {
+router.get('/group/:id', authorize('receptionist', 'lab_manager', 'admin'), async (req, res) => {
   try {
     const [group] = await sql`
       SELECT sg.*, c.name AS client_name, c.contact_person, c.email AS client_email, c.address
@@ -144,8 +144,8 @@ router.get('/group/:id', authorize('admin', 'lab_manager', 'super_admin'), async
   }
 });
 
-// GET /api/reports/overview — super_admin sees everything
-router.get('/overview', authorize('super_admin'), async (req, res) => {
+// GET /api/reports/overview — admin sees everything
+router.get('/overview', authorize('admin'), async (req, res) => {
   try {
     const stats = await sql`
       SELECT

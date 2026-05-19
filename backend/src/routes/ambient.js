@@ -57,7 +57,7 @@ router.get('/:date', async (req, res) => {
 });
 
 // PUT /api/ambient/:date — lab_manager upserts reading for a date
-router.put('/:date', authorize('lab_manager', 'super_admin'), async (req, res) => {
+router.put('/:date', authorize('lab_manager', 'admin'), async (req, res) => {
   try {
     const { temperature, humidity, notes } = req.body;
     if (temperature == null && humidity == null)

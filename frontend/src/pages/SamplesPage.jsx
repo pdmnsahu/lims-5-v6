@@ -21,14 +21,14 @@ function SampleStatusBadge({ status }) {
 
 export default function SamplesPage() {
   const { user }     = useAuth();
-  const isAdmin      = user.role === 'admin';
-  const isManager    = user.role === 'lab_manager';
-  const isSuperAdmin = user.role === 'super_admin';
+  const isReceptionist = user.role === 'receptionist';
+  const isManager      = user.role === 'lab_manager';
+  const isAdmin        = user.role === 'admin';
 
   // ── View toggle: 'groups' | 'individual' ──────────────────────────────────
   // Admins and managers default to groups (that's where they start their work)
   // Super admin defaults to individual (they want the full sorted list)
-  const [view, setView] = useState(isSuperAdmin ? 'individual' : 'groups');
+  const [view, setView] = useState(isAdmin ? 'individual' : 'groups');
 
   // ── Group view state ───────────────────────────────────────────────────────
   const [groups,    setGroups]   = useState([]);
@@ -60,12 +60,12 @@ export default function SamplesPage() {
     try {
       const [g, c] = await Promise.all([
         api.getSampleGroups(),
-        (isAdmin || isSuperAdmin) ? api.getClients() : Promise.resolve([]),
+        (isAdmin || isReceptionist) ? api.getClients() : Promise.resolve([]),
       ]);
       setGroups(g); setClients(c);
     } catch (err) { console.error(err); }
     finally { setGroupsLoading(false); }
-  }, [isAdmin, isSuperAdmin]);
+  }, [isAdmin, isAdmin]);
 
   const loadSamples = useCallback(async () => {
     setSamplesLoading(true); setSamplesError('');
@@ -157,13 +157,6 @@ export default function SamplesPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Register Group — admin only, groups view only */}
-          {isAdmin && view === 'groups' && (
-            <button className="btn-primary" onClick={openModal}>
-              <Plus size={15} /> Register Group
-            </button>
-          )}
-
           {/* View toggle */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button onClick={() => setView('groups')}
@@ -281,7 +274,7 @@ export default function SamplesPage() {
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
                       {['Lab ID','Sample Ref ID','Group','Client','Tests','Status','Registered',
-                        isSuperAdmin ? 'Actions' : ''].filter(Boolean).map((h,i) => (
+                        isAdmin ? 'Actions' : ''].filter(Boolean).map((h,i) => (
                         <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -309,7 +302,7 @@ export default function SamplesPage() {
                           <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                             {new Date(s.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}
                           </td>
-                          {isSuperAdmin && (
+                          {isAdmin && (
                             <td className="px-4 py-3">
                               <button onClick={() => setDeleteConfirm(s)} title="Delete sample"
                                 className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">

@@ -10,7 +10,7 @@ const statusMap = {
   submitted:   'bg-purple-50 text-purple-700',
   approved:    'bg-green-50 text-green-700',
   rejected:    'bg-red-50 text-red-700',
-  super_admin: 'bg-rose-100 text-rose-800',
+  admin: 'bg-rose-100 text-rose-800',
   admin:       'bg-orange-100 text-orange-800',
   lab_manager: 'bg-blue-100 text-blue-800',
   chemist:     'bg-teal-100 text-teal-800',

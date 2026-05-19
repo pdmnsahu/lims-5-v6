@@ -5,10 +5,10 @@ import { authenticate, authorize } from '../middleware/auth.js';
 const router = Router();
 router.use(authenticate);
 
-// GET /api/test-definitions — all active (or all for super_admin)
+// GET /api/test-definitions — all active (or all for admin)
 router.get('/', async (req, res) => {
   try {
-    const defs = req.user.role === 'super_admin'
+    const defs = req.user.role === 'admin'
       ? await sql`SELECT * FROM test_definitions ORDER BY name ASC`
       : await sql`SELECT * FROM test_definitions WHERE is_active = true ORDER BY name ASC`;
     res.json(defs);
@@ -18,8 +18,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/test-definitions — super_admin creates
-router.post('/', authorize('super_admin'), async (req, res) => {
+// POST /api/test-definitions — admin creates
+router.post('/', authorize('admin'), async (req, res) => {
   try {
     const { name, unit, description } = req.body;
     if (!name) return res.status(400).json({ error: 'Test name required' });
@@ -36,8 +36,8 @@ router.post('/', authorize('super_admin'), async (req, res) => {
   }
 });
 
-// PATCH /api/test-definitions/:id — super_admin updates
-router.patch('/:id', authorize('super_admin'), async (req, res) => {
+// PATCH /api/test-definitions/:id — admin updates
+router.patch('/:id', authorize('admin'), async (req, res) => {
   try {
     const { name, unit, description, is_active } = req.body;
     const [def] = await sql`
@@ -58,8 +58,8 @@ router.patch('/:id', authorize('super_admin'), async (req, res) => {
   }
 });
 
-// DELETE /api/test-definitions/:id — super_admin deletes (only if never used)
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
+// DELETE /api/test-definitions/:id — admin deletes (only if never used)
+router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const [used] = await sql`SELECT id FROM sample_tests WHERE test_definition_id = ${req.params.id} LIMIT 1`;
     if (used) return res.status(409).json({ error: 'Cannot delete — test is in use. Deactivate it instead.' });

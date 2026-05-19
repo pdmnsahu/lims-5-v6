@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { Table, Badge, Modal, Field, Alert, Confirm, Empty } from '../components/shared/UI';
 import { UserPlus, Trash2, ToggleLeft, ToggleRight, KeyRound, Copy, Check, Pencil } from 'lucide-react';
 
-const ROLES = ['admin', 'lab_manager', 'chemist'];
+const ROLES = ['receptionist', 'lab_manager', 'chemist'];
 
 export default function UsersPage() {
   const [users,   setUsers]   = useState([]);
@@ -32,7 +32,7 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const data = await api.getUsers();
-      setUsers(data.filter(u => u.role !== 'super_admin'));
+      setUsers(data.filter(u => u.role !== 'admin'));
     } catch (err) {
       console.error(err);
     } finally {
@@ -218,7 +218,9 @@ export default function UsersPage() {
 
           <Field label="Role" required>
             <select className="input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              {ROLES.map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>
+                {r === 'receptionist' ? 'Receptionist' : r === 'lab_manager' ? 'Lab Manager' : 'Chemist'}
+              </option>)}
             </select>
           </Field>
 
@@ -296,7 +298,9 @@ export default function UsersPage() {
             </div>
             <Field label="New Role" required>
               <select className="input" value={editRoleVal} onChange={e => setEditRoleVal(e.target.value)}>
-                {ROLES.map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                {ROLES.map(r => <option key={r} value={r}>
+                {r === 'receptionist' ? 'Receptionist' : r === 'lab_manager' ? 'Lab Manager' : 'Chemist'}
+              </option>)}
               </select>
             </Field>
             <Alert type="error" message={editRoleErr} />

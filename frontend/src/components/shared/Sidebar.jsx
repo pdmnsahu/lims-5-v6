@@ -3,11 +3,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Building2, FlaskConical,
   FileCheck, LogOut, ChevronRight,
-  Beaker, Shield, Layers, Thermometer, CheckSquare, Settings
+  Beaker, Shield, Layers, Thermometer, CheckSquare, Settings, ClipboardList
 } from 'lucide-react';
 
 const roleNav = {
-  super_admin: [
+  admin: [
     { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard'    },
     { to: '/users',      icon: Users,           label: 'Users'        },
     { to: '/clients',    icon: Building2,       label: 'Clients'      },
@@ -16,22 +16,30 @@ const roleNav = {
     { to: '/audit',      icon: Shield,          label: 'Audit Trail'  },
     { to: '/settings',   icon: Settings,        label: 'Lab Settings' },
   ],
-  admin: [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/samples',   icon: Layers,          label: 'Samples'   },
-    { to: '/reports',   icon: FileCheck,       label: 'Reports'   },
+  receptionist: [
+    { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard'       },
+    { to: '/samples',          icon: Layers,          label: 'Samples'         },
+    { to: '/register-group',   icon: ClipboardList,   label: 'Register Group'  },
+    { to: '/reports',          icon: FileCheck,       label: 'Reports'         },
   ],
   lab_manager: [
-    { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard'       },
-    { to: '/samples',        icon: Layers,          label: 'Samples'         },
-    { to: '/sample-approval',icon: CheckSquare,     label: 'Sample Approval' },
-    { to: '/reports',        icon: FileCheck,       label: 'Reports'         },
-    { to: '/ambient',        icon: Thermometer,     label: 'Ambient Log'     },
+    { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard'       },
+    { to: '/samples',         icon: Layers,          label: 'Samples'         },
+    { to: '/sample-approval', icon: CheckSquare,     label: 'Sample Approval' },
+    { to: '/reports',         icon: FileCheck,       label: 'Reports'         },
+    { to: '/ambient',         icon: Thermometer,     label: 'Ambient Log'     },
   ],
   chemist: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/my-tests',  icon: Beaker,          label: 'My Tests'  },
   ],
+};
+
+const ROLE_LABELS = {
+  admin:        'Admin',
+  receptionist: 'Receptionist',
+  lab_manager:  'Lab Manager',
+  chemist:      'Chemist',
 };
 
 export default function Sidebar() {
@@ -61,7 +69,7 @@ export default function Sidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-semibold text-gray-800 truncate">{user?.name}</p>
-            <p className="text-[10px] text-gray-400 truncate font-mono">{user?.username}</p>
+            <p className="text-[10px] text-gray-400 truncate">{ROLE_LABELS[user?.role] || user?.role}</p>
           </div>
         </div>
       </div>

@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
   try {
     const { role } = req.query;
     let users;
-    if (req.user.role === 'super_admin') {
+    if (req.user.role === 'admin') {
       users = role
         ? await sql`SELECT id,name,username,role,is_active,created_at FROM users WHERE role=${role} ORDER BY created_at DESC`
         : await sql`SELECT id,name,username,role,is_active,created_at FROM users ORDER BY created_at DESC`;
@@ -21,17 +21,14 @@ router.get('/', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
     res.json(users);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/', authorize('super_admin'), async (req, res) => {
+router.post('/', authorize('admin'), async (req, res) => {
   try {
     const { name, role, username: providedUsername } = req.body;
     if (!name || !role) return res.status(400).json({ error: 'Name and role required' });
-    if (!['admin', 'lab_manager', 'chemist'].includes(role))
+    if (!['receptionist', 'lab_manager', 'chemist'].includes(role))
       return res.status(400).json({ error: 'Invalid role' });
 
     let username;
@@ -65,28 +62,24 @@ router.post('/', authorize('super_admin'), async (req, res) => {
     res.status(201).json({ ...user, default_password: username });
   } catch (err) {
     if (err.message?.includes('unique') || err.message?.includes('duplicate'))
-      return res.status(409).json({ error: 'Username already exists — choose a different one' });
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+      return res.status(409).json({ error: 'Username already exists' });
+    console.error(err); res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.patch('/:id', authorize('super_admin'), async (req, res) => {
+router.patch('/:id', authorize('admin'), async (req, res) => {
   try {
     const { is_active, name, role } = req.body;
 
-    // If changing role, verify no active pending/submitted tests
     if (role) {
-      if (!['admin', 'lab_manager', 'chemist'].includes(role))
+      if (!['receptionist', 'lab_manager', 'chemist'].includes(role))
         return res.status(400).json({ error: 'Invalid role' });
-
       const [{ count }] = await sql`
         SELECT COUNT(*)::int AS count FROM sample_tests
-        WHERE assigned_chemist_id = ${req.params.id}
-          AND status IN ('pending','submitted')
+        WHERE assigned_chemist_id = ${req.params.id} AND status IN ('pending','submitted')
       `;
       if (count > 0)
-        return res.status(409).json({ error: `Cannot change role — this user has ${count} pending or submitted test(s). Reassign them first.` });
+        return res.status(409).json({ error: `Cannot change role — ${count} pending/submitted test(s). Reassign first.` });
     }
 
     const [before] = await sql`SELECT * FROM users WHERE id = ${req.params.id}`;
@@ -108,51 +101,36 @@ router.patch('/:id', authorize('super_admin'), async (req, res) => {
 
     await logAction({ user: req.user, action, entityType: 'user',
       entityId: user.id, entityLabel: user.username,
-      detail: {
-        old_role: before.role, new_role: user.role,
-        old_name: before.name, new_name: user.name,
-        is_active: user.is_active,
-      }, ip: getIP(req) });
+      detail: { old_role: before.role, new_role: user.role, is_active: user.is_active }, ip: getIP(req) });
 
     res.json(user);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/:id/reset-password', authorize('super_admin'), async (req, res) => {
+router.post('/:id/reset-password', authorize('admin'), async (req, res) => {
   try {
     const [user] = await sql`SELECT username FROM users WHERE id = ${req.params.id}`;
     if (!user) return res.status(404).json({ error: 'User not found' });
     const hash = await bcrypt.hash(user.username, 10);
     await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${req.params.id}`;
-
     await logAction({ user: req.user, action: 'RESET_PASSWORD', entityType: 'user',
       entityId: req.params.id, entityLabel: user.username, ip: getIP(req) });
-
     res.json({ success: true, message: `Password reset to: ${user.username}` });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
+router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const [target] = await sql`SELECT name, username, role FROM users WHERE id = ${req.params.id}`;
-    await sql`DELETE FROM users WHERE id = ${req.params.id} AND role != 'super_admin'`;
-
+    await sql`DELETE FROM users WHERE id = ${req.params.id} AND role != 'admin'`;
     await logAction({ user: req.user, action: 'DELETE_USER', entityType: 'user',
       entityId: req.params.id, entityLabel: target?.username,
       detail: { deleted_name: target?.name, deleted_role: target?.role }, ip: getIP(req) });
-
     res.json({ success: true });
   } catch (err) {
     if (err.message?.includes('foreign key') || err.message?.includes('violates'))
-      return res.status(409).json({ error: 'Cannot delete user — they have tests assigned. Deactivate them instead.' });
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+      return res.status(409).json({ error: 'Cannot delete — deactivate instead.' });
+    console.error(err); res.status(500).json({ error: 'Server error' });
   }
 });
 

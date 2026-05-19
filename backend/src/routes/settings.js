@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
 });
 
 // PUT /api/settings — super admin updates text fields
-router.put('/', authorize('super_admin'), async (req, res) => {
+router.put('/', authorize('admin'), async (req, res) => {
   try {
     const { lab_name, lab_address, lab_phone, lab_email, lab_website, corp_office } = req.body;
     const [settings] = await sql`
@@ -103,12 +103,12 @@ async function uploadSettingsImage(req, res, columnName, publicId) {
 }
 
 // POST /api/settings/upload/logo
-router.post('/upload/logo',          authorize('super_admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'logo_url',          'lab_logo'));
+router.post('/upload/logo',          authorize('admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'logo_url',          'lab_logo'));
 // POST /api/settings/upload/accreditation
-router.post('/upload/accreditation', authorize('super_admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'accreditation_url', 'lab_accreditation'));
+router.post('/upload/accreditation', authorize('admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'accreditation_url', 'lab_accreditation'));
 // POST /api/settings/upload/stamp
-router.post('/upload/stamp',         authorize('super_admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'stamp_url',         'lab_stamp'));
+router.post('/upload/stamp',         authorize('admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'stamp_url',         'lab_stamp'));
 // POST /api/settings/upload/signature
-router.post('/upload/signature',     authorize('super_admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'signature_url',     'lab_signature'));
+router.post('/upload/signature',     authorize('admin'), upload.single('image'), (req, res) => uploadSettingsImage(req, res, 'signature_url',     'lab_signature'));
 
 export default router;

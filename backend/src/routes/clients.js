@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', authorize('super_admin'), async (req, res) => {
+router.post('/', authorize('admin'), async (req, res) => {
   try {
     const { name, contact_person, email, phone, address } = req.body;
     if (!name) return res.status(400).json({ error: 'Client name required' });
@@ -35,7 +35,7 @@ router.post('/', authorize('super_admin'), async (req, res) => {
   }
 });
 
-router.patch('/:id', authorize('super_admin'), async (req, res) => {
+router.patch('/:id', authorize('admin'), async (req, res) => {
   try {
     const { name, contact_person, email, phone, address } = req.body;
     const [client] = await sql`
@@ -59,7 +59,7 @@ router.patch('/:id', authorize('super_admin'), async (req, res) => {
   }
 });
 
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
+router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
     const [target] = await sql`SELECT name FROM clients WHERE id = ${req.params.id}`;
     await sql`DELETE FROM clients WHERE id = ${req.params.id}`;

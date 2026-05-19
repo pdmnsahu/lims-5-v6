@@ -16,9 +16,9 @@ export default function SampleGroupDetailPage() {
   const [testDefs,   setTestDefs]  = useState([]);
   const [clients,    setClients]   = useState([]);
 
-  const isManager    = user.role === 'lab_manager';
-  const isSuperAdmin = user.role === 'super_admin';
-  const isAdmin      = user.role === 'admin';
+  const isManager      = user.role === 'lab_manager';
+  const isAdmin        = user.role === 'admin';
+  const isReceptionist = user.role === 'receptionist';
 
   // Edit Group modal
   const [editGroupOpen,   setEditGroupOpen]   = useState(false);
@@ -67,11 +67,11 @@ export default function SampleGroupDetailPage() {
 
   useEffect(() => {
     load();
-    if (isManager || isSuperAdmin) {
+    if (isManager || isAdmin) {
       Promise.all([api.getUsers('chemist'), api.getTestDefinitions()])
         .then(([c, d]) => { setChemists(c); setTestDefs(d); }).catch(() => {});
     }
-    if (isSuperAdmin || isAdmin) {
+    if (isAdmin || isAdmin) {
       api.getClients().then(setClients).catch(() => {});
     }
   }, [id]);
@@ -95,7 +95,7 @@ export default function SampleGroupDetailPage() {
 
   // ── Delete Group ────────────────────────────────────────────────────────────
   const handleDeleteGroup = async () => {
-    try { await api.deleteSampleGroup(id); navigate('/sample-groups'); }
+    try { await api.deleteSampleGroup(id); navigate('/samples'); }
     catch (err) { alert(err.message); }
     setDeleteGroupConfirm(false);
   };
@@ -184,8 +184,8 @@ export default function SampleGroupDetailPage() {
   if (!group)    return null;
 
   const selectedCount  = Object.values(selectedSamples).filter(Boolean).length;
-  const canDeleteGroup = group.status === 'on_the_way' && (isSuperAdmin || isAdmin);
-  const canEditGroup   = isSuperAdmin || isAdmin;
+  const canDeleteGroup = group.status === 'on_the_way' && (isAdmin || isAdmin);
+  const canEditGroup   = isAdmin || isAdmin;
 
   return (
     <div className="space-y-6">
@@ -210,7 +210,7 @@ export default function SampleGroupDetailPage() {
           {canDeleteGroup && (
             <button className="btn-danger" onClick={() => setDeleteGroupConfirm(true)}><Trash2 size={14} /> Delete Group</button>
           )}
-          {(isManager || isSuperAdmin) && (
+          {(isManager || isAdmin) && (
             <button className="btn-primary" onClick={openBulk}><Layers size={15} /> Bulk Assign Tests</button>
           )}
         </div>
@@ -233,9 +233,9 @@ export default function SampleGroupDetailPage() {
             <tbody className="divide-y divide-gray-50">
               {group.samples.map(s => {
                 const hasLabId     = !!s.lab_internal_id;
-                const canEditRefId = !hasLabId && (isSuperAdmin || isAdmin);
+                const canEditRefId = !hasLabId && (isAdmin || isAdmin);
                 const hasSubmitted = (s.assigned_tests || []).some(t => ['submitted','approved'].includes(t.status));
-                const canEditLabId = (isManager || isSuperAdmin) && !hasSubmitted;
+                const canEditLabId = (isManager || isAdmin) && !hasSubmitted;
 
                 return (
                   <tr key={s.id} className="hover:bg-gray-50">
@@ -278,7 +278,7 @@ export default function SampleGroupDetailPage() {
                                 {t.test_name}
                                 {t.chemist_name && <span className="ml-1 opacity-60">· {t.chemist_name}</span>}
                               </span>
-                              {t.status === 'pending' && (isManager || isSuperAdmin) && (<>
+                              {t.status === 'pending' && (isManager || isAdmin) && (<>
                                 <button onClick={() => openReassign(t)} title="Reassign"
                                   className="p-0.5 rounded hover:bg-amber-100 text-gray-300 hover:text-amber-600"><RefreshCw size={10} /></button>
                                 <button onClick={() => setDeleteTestConfirm(t)} title="Delete"
@@ -289,7 +289,7 @@ export default function SampleGroupDetailPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {(isManager || isSuperAdmin) && (
+                      {(isManager || isAdmin) && (
                         <button onClick={openBulk} className="inline-flex items-center gap-1 text-xs btn-primary py-1 px-2">
                           <FlaskConical size={10} /> Assign
                         </button>

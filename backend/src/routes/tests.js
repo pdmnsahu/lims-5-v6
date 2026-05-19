@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
         WHERE st.status = 'approved'
         ORDER BY st.created_at DESC
       `;
-    } else if (req.user.role === 'admin') {
+    } else if (req.user.role === 'receptionist') {
       tests = await sql`
         SELECT st.*, td.name AS test_name, td.unit AS test_unit,
                s.id AS sample_db_id, s.sample_ref_id, s.lab_internal_id,
@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
         WHERE st.status = 'approved'
         ORDER BY st.created_at DESC
       `;
-    } else if (req.user.role === 'super_admin') {
+    } else if (req.user.role === 'admin') {
       tests = await sql`
         SELECT st.*, td.name AS test_name, td.unit AS test_unit,
                s.id AS sample_db_id, s.sample_ref_id, s.lab_internal_id,
@@ -77,7 +77,7 @@ router.get('/', async (req, res) => {
 // ── IMPORTANT: all literal-path GET routes MUST come before GET /:id ─────────
 
 // GET /api/tests/sample-approval
-router.get('/sample-approval', authorize('lab_manager', 'super_admin'), async (req, res) => {
+router.get('/sample-approval', authorize('lab_manager', 'admin'), async (req, res) => {
   try {
     const samples = await sql`
       SELECT
@@ -247,7 +247,7 @@ router.patch('/:id/review', authorize('lab_manager'), async (req, res) => {
 });
 
 // PATCH /api/tests/:id/reassign
-router.patch('/:id/reassign', authorize('lab_manager', 'super_admin'), async (req, res) => {
+router.patch('/:id/reassign', authorize('lab_manager', 'admin'), async (req, res) => {
   try {
     const { assigned_chemist_id } = req.body;
     if (!assigned_chemist_id) return res.status(400).json({ error: 'assigned_chemist_id required' });
@@ -279,7 +279,7 @@ router.patch('/:id/reassign', authorize('lab_manager', 'super_admin'), async (re
 });
 
 // DELETE /api/tests/:id
-router.delete('/:id', authorize('lab_manager', 'super_admin'), async (req, res) => {
+router.delete('/:id', authorize('lab_manager', 'admin'), async (req, res) => {
   try {
     const [existing] = await sql`
       SELECT st.*, td.name AS test_name FROM sample_tests st
@@ -303,8 +303,8 @@ router.delete('/:id', authorize('lab_manager', 'super_admin'), async (req, res) 
   }
 });
 
-// PATCH /api/tests/:id/revoke-approval — super_admin only
-router.patch('/:id/revoke-approval', authorize('super_admin'), async (req, res) => {
+// PATCH /api/tests/:id/revoke-approval — admin only
+router.patch('/:id/revoke-approval', authorize('admin'), async (req, res) => {
   try {
     const { reason } = req.body;
     if (!reason?.trim()) return res.status(400).json({ error: 'Reason for revoking approval is required' });

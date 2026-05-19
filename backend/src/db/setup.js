@@ -2,18 +2,38 @@ import { sql } from './client.js';
 import bcrypt from 'bcryptjs';
 
 async function setup() {
-  console.log('🔌 Connecting to Neon PostgreSQL (v6)...');
+  console.log('🔌 Connecting to Neon PostgreSQL (v7)...');
 
   await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
 
+  // Users table — new CHECK constraint with renamed roles
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name TEXT NOT NULL, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('super_admin','admin','lab_manager','chemist')),
+      role TEXT NOT NULL CHECK (role IN ('admin','receptionist','lab_manager','chemist')),
       is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now()
     )
   `;
+
+  // v7 role migration — runs safely on existing DBs
+  // Step 1: drop old constraint so UPDATE can proceed
+  await sql`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`.catch(() => {});
+  // Step 2: rename super_admin → admin first (no collision risk)
+  await sql`UPDATE users SET role = 'admin' WHERE role = 'super_admin'`.catch(() => {});
+  // Step 3: rename old admin → receptionist
+  await sql`UPDATE users SET role = 'receptionist' WHERE role = 'admin' AND created_at < now() AND role = 'admin'`.catch(() => {});
+  // Step 4: re-add constraint with new values
+  await sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'users_role_check'
+      ) THEN
+        ALTER TABLE users ADD CONSTRAINT users_role_check
+          CHECK (role IN ('admin','receptionist','lab_manager','chemist'));
+      END IF;
+    END $$
+  `.catch(() => {});
 
   await sql`
     CREATE TABLE IF NOT EXISTS clients (
@@ -31,7 +51,6 @@ async function setup() {
     )
   `;
 
-  // New status values: on_the_way | tests_ongoing | completed
   await sql`
     CREATE TABLE IF NOT EXISTS sample_groups (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,7 +62,6 @@ async function setup() {
     )
   `;
 
-  // Migrate old status values if upgrading
   await sql`UPDATE sample_groups SET status = 'on_the_way'    WHERE status = 'collected'`.catch(() => {});
   await sql`UPDATE sample_groups SET status = 'tests_ongoing' WHERE status = 'in_progress'`.catch(() => {});
 
@@ -73,13 +91,11 @@ async function setup() {
   `;
   await sql`ALTER TABLE sample_tests ADD COLUMN IF NOT EXISTS image_url TEXT`;
 
-  // Daily ambient readings (temperature + humidity)
   await sql`
     CREATE TABLE IF NOT EXISTS ambient_readings (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       reading_date DATE NOT NULL UNIQUE,
-      temperature NUMERIC(5,2),
-      humidity NUMERIC(5,2),
+      temperature NUMERIC(5,2), humidity NUMERIC(5,2),
       recorded_by UUID REFERENCES users(id),
       notes TEXT,
       created_at TIMESTAMPTZ DEFAULT now(),
@@ -101,7 +117,6 @@ async function setup() {
   await sql`CREATE INDEX IF NOT EXISTS idx_audit_entity  ON audit_logs(entity_type)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC)`;
 
-  // ── LAB SETTINGS (single row, always upserted) ─────────────────────────────
   await sql`
     CREATE TABLE IF NOT EXISTS lab_settings (
       id            TEXT PRIMARY KEY DEFAULT 'default',
@@ -111,29 +126,23 @@ async function setup() {
       lab_email     TEXT DEFAULT 'lab@ravienergie.com',
       lab_website   TEXT DEFAULT 'www.ravienergie.com',
       corp_office   TEXT DEFAULT 'S15 A/B India Bulls Mega Mall, Jetalpur Road, Vadodara - 390 020, India',
-      logo_url      TEXT,
-      accreditation_url TEXT,
-      stamp_url     TEXT,
-      signature_url TEXT,
+      logo_url      TEXT, accreditation_url TEXT, stamp_url TEXT, signature_url TEXT,
       updated_at    TIMESTAMPTZ DEFAULT now()
     )
   `;
-  // Ensure the default row exists
-  await sql`
-    INSERT INTO lab_settings (id) VALUES ('default')
-    ON CONFLICT (id) DO NOTHING
-  `;
+  await sql`INSERT INTO lab_settings (id) VALUES ('default') ON CONFLICT (id) DO NOTHING`;
 
   console.log('✅ Tables created / verified');
 
-  const superUsername = 'superadmin.relims';
-  const superHash = await bcrypt.hash(superUsername, 10);
+  // Seed admin user (previously superadmin.relims)
+  const adminUsername = 'admin.relims';
+  const adminHash = await bcrypt.hash(adminUsername, 10);
   await sql`
     INSERT INTO users (name, username, password_hash, role)
-    VALUES ('Super Admin', ${superUsername}, ${superHash}, 'super_admin')
+    VALUES ('Admin', ${adminUsername}, ${adminHash}, 'admin')
     ON CONFLICT (username) DO NOTHING
   `;
-  console.log(`✅ Super admin → ${superUsername} / ${superUsername}`);
+  console.log(`✅ Admin → ${adminUsername} / ${adminUsername}`);
 
   const tests = [
     { name: 'Gross Calorific Value', unit: 'kCal/kg', description: 'GCV via Parr calorimeter — attach snapshot' },
@@ -150,8 +159,8 @@ async function setup() {
       ON CONFLICT (name) DO NOTHING
     `;
   }
-  console.log('✅ 6 test definitions seeded: GCV, Moisture ADB, Ash ADB, VM ADB, Moisture EQ, Total Moisture TM');
-  console.log('\n🎉 Database setup complete! (v6)');
+  console.log('✅ 6 test definitions seeded');
+  console.log('\n🎉 Database setup complete! (v7)');
   process.exit(0);
 }
 

@@ -3,7 +3,7 @@ import { sql } from '../db/client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
-router.use(authenticate, authorize('super_admin'));
+router.use(authenticate, authorize('admin'));
 
 /**
  * GET /api/audit

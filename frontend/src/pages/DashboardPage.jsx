@@ -35,10 +35,10 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        if (user.role === 'super_admin') {
+        if (user.role === 'receptionist') {
           const [users, clients] = await Promise.all([api.getUsers(), api.getClients()]);
           setData({ users, clients });
-        } else if (user.role === 'admin') {
+        } else if (user.role === 'receptionist') {
           const [groups, tests] = await Promise.all([api.getSampleGroups(), api.getTests()]);
           setData({ groups, tests });
         } else if (user.role === 'lab_manager') {
@@ -76,13 +76,13 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Super Admin */}
-      {user.role === 'super_admin' && data && (
+      {/* Admin */}
+      {user.role === 'admin' && data && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Total Users"    value={data.users.length}                                          icon={Users}       color="brand" />
             <StatCard label="Clients"        value={data.clients.length}                                        icon={Building2}   color="blue"  />
-            <StatCard label="Admins"         value={data.users.filter(u=>u.role==='admin').length}              icon={Users}       color="amber" />
+            <StatCard label="Receptionists"         value={data.users.filter(u=>u.role==='receptionist').length}       icon={Users}       color="amber" />
             <StatCard label="Chemists"       value={data.users.filter(u=>u.role==='chemist').length}            icon={FlaskConical} color="green" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -127,8 +127,8 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* Admin */}
-      {user.role === 'admin' && data && (
+      {/* Receptionist */}
+      {user.role === 'receptionist' && data && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard label="Sample Groups"  value={data.groups.length}                                         icon={ClipboardList} color="brand"  />
