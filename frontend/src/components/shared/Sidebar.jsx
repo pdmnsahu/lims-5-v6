@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Building2, FlaskConical,
   FileCheck, LogOut, ChevronRight,
-  Beaker, Shield, Layers, Thermometer, CheckSquare, Settings, ClipboardList
+  Beaker, Shield, Layers, Thermometer, CheckSquare, Settings, ClipboardList, Database
 } from 'lucide-react';
 
 const roleNav = {
