@@ -129,6 +129,40 @@ export const api = {
   getAuditActors:  ()            => request('/audit/actors'),
   getAuditActions: ()            => request('/audit/actions'),
 
+  // Backup
+  exportData: async () => {
+    const token = getToken();
+    const res = await fetch(`${BASE}/backup/export`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Export failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `CoalLIMS_Export_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  importData: async (file) => {
+    const token = getToken();
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${BASE}/backup/import`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Import failed' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
   // Lab Settings
   getSettings:     ()            => request('/settings'),
   updateSettings:  (data)        => request('/settings', { method: 'PUT', body: data }),

@@ -116,7 +116,7 @@ export default function LoginPage() {
 
           <div className="mt-8 p-3 bg-gray-100 rounded-lg">
             <p className="text-xs text-gray-500 text-center font-mono">
-              admin.relims / admin.relims
+              superadmin.relims / superadmin.relims
             </p>
           </div>
         </div>

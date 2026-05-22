@@ -121,7 +121,7 @@ async function setup() {
     CREATE TABLE IF NOT EXISTS lab_settings (
       id            TEXT PRIMARY KEY DEFAULT 'default',
       lab_name      TEXT DEFAULT 'Ravi Energie Laboratory',
-      lab_address   TEXT DEFAULT 'Plot No-14, Astankar Bhavan, Behind Tukaram Sabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.',
+      lab_address   TEXT DEFAULT 'Plot No14, AstankarBhavan, Behind TukaramSabhagruha, SuyogNagar, District Nagpur - 440015, Maharashtra, India.',
       lab_phone     TEXT DEFAULT '+91 8320021741',
       lab_email     TEXT DEFAULT 'lab@ravienergie.com',
       lab_website   TEXT DEFAULT 'www.ravienergie.com',

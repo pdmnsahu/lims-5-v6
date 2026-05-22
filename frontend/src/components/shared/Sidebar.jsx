@@ -15,6 +15,7 @@ const roleNav = {
     { to: '/all-tests',  icon: FileCheck,       label: 'All Tests'    },
     { to: '/audit',      icon: Shield,          label: 'Audit Trail'  },
     { to: '/settings',   icon: Settings,        label: 'Lab Settings' },
+    { to: '/backup',     icon: Database,        label: 'Data Backup'  },
   ],
   receptionist: [
     { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard'       },
@@ -56,7 +57,7 @@ export default function Sidebar() {
             <FlaskConical size={16} className="text-white" />
           </div>
           <div>
-            <p className="font-display font-bold text-gray-900 leading-none text-base">RELIMS</p>
+            <p className="font-display font-bold text-gray-900 leading-none text-base">CoalLIMS</p>
             <p className="text-[10px] text-gray-400 mt-0.5">Lab Management</p>
           </div>
         </div>

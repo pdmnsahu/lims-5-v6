@@ -14,7 +14,8 @@ import ReportsPage from './pages/ReportsPage';
 import SuperAdminAllTestsPage from './pages/SuperAdminAllTestsPage';
 import AuditPage from './pages/AuditPage';
 import AmbientPage from './pages/AmbientPage';
-import LabSettingsPage from './pages/LabSettingsPage';
+import LabSettingsPage    from './pages/LabSettingsPage';
+import ExportImportPage   from './pages/ExportImportPage';
 import { PageSpinner } from './components/shared/UI';
 
 function RoleRoute({ roles, children }) {
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="all-tests" element={<RoleRoute roles={['admin']}><SuperAdminAllTestsPage /></RoleRoute>} />
         <Route path="audit"     element={<RoleRoute roles={['admin']}><AuditPage /></RoleRoute>} />
         <Route path="settings"  element={<RoleRoute roles={['admin']}><LabSettingsPage /></RoleRoute>} />
+        <Route path="backup"    element={<RoleRoute roles={['admin']}><ExportImportPage /></RoleRoute>} />
 
         {/* Samples — all staff roles */}
         <Route path="samples" element={<RoleRoute roles={['admin','receptionist','lab_manager']}><SamplesPage /></RoleRoute>} />
