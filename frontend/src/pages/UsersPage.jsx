@@ -12,7 +12,7 @@ export default function UsersPage() {
   const [confirm, setConfirm] = useState(null);
   const [created, setCreated] = useState(null);
   const [error,   setError]   = useState('');
-  const [form,    setForm]    = useState({ name: '', role: 'admin', username: '' });
+  const [form,    setForm]    = useState({ name: '', role: 'receptionist', username: '' });
   const [saving,  setSaving]  = useState(false);
   const [filter,  setFilter]  = useState('');
   const [copied,  setCopied]  = useState(false);
@@ -43,7 +43,7 @@ export default function UsersPage() {
   useEffect(() => { load(); }, []);
 
   const openModal = () => {
-    setForm({ name: '', role: 'admin', username: '' });
+    setForm({ name: '', role: 'receptionist', username: '' });
     setError('');
     setModal(true);
   };
