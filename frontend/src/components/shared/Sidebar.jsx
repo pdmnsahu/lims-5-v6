@@ -57,7 +57,7 @@ export default function Sidebar() {
             <FlaskConical size={16} className="text-white" />
           </div>
           <div>
-            <p className="font-display font-bold text-gray-900 leading-none text-base">CoalLIMS</p>
+            <p className="font-display font-bold text-gray-900 leading-none text-base">RELIMS</p>
             <p className="text-[10px] text-gray-400 mt-0.5">Lab Management</p>
           </div>
         </div>
